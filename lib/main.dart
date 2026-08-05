@@ -51,7 +51,7 @@ class _ChrysotileAppState extends ConsumerState<ChrysotileApp> {
 
     return MaterialApp(
       navigatorKey: navigatorKey,
-      title: 'Chrysotile',
+      title: 'Chrysotile News',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       theme: AppTheme.light(),
