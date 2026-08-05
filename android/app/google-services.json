@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "763809316429",
+    "project_id": "chrysotile-app",
+    "storage_bucket": "chrysotile-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763809316429:android:63dcd9d19613c39b312604",
+        "android_client_info": {
+          "package_name": "kz.chrysotile.chrysotile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBw1DN4yKzaHOlVQbGBWxCCUbOl1UulLv4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

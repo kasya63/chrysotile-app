@@ -187,4 +187,30 @@ class ChrysotileApi {
     );
     return ArticleComment.fromJson(response.data ?? {});
   }
+
+  Future<void> registerDevice({
+    required String fcmToken,
+    required String platform,
+    required List<String> topics,
+    required String appVersion,
+  }) async {
+    await _dio.post<void>(
+      '/devices',
+      data: {
+        'fcm_token': fcmToken,
+        'platform': platform,
+        'topics': topics,
+        'app_version': appVersion,
+      },
+    );
+  }
+
+  Future<void> unregisterDevice(String fcmToken) async {
+    await _dio.delete<void>(
+      '/devices',
+      queryParameters: {
+        'fcm_token': fcmToken,
+      },
+    );
+  }
 }

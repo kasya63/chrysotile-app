@@ -1,8 +1,19 @@
+import 'package:chrysotile_app/core/notifications/push_service.dart';
+import 'package:chrysotile_app/core/theme/theme_mode_provider.dart';
 import 'package:chrysotile_app/features/auth/auth_providers.dart';
 import 'package:chrysotile_app/features/auth/login_screen.dart';
-import 'package:chrysotile_app/core/theme/theme_mode_provider.dart';
+import 'package:chrysotile_app/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+const _topicOptions = <MapEntry<String, String>>[
+  MapEntry('cat_glavnye', 'Главное'),
+  MapEntry('cat_gosudarstvo', 'В стране'),
+  MapEntry('cat_region', 'В регионе'),
+  MapEntry('cat_people', 'Люди'),
+  MapEntry('cat_society', 'Общество'),
+  MapEntry('cat_special_projects', 'Спецпроекты'),
+];
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -12,6 +23,8 @@ class ProfileScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final auth = ref.watch(authControllerProvider);
     final user = auth.valueOrNull;
+    final pushReady = ref.watch(pushReadyProvider);
+    final topics = ref.watch(pushTopicsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -61,18 +74,81 @@ class ProfileScreen extends ConsumerWidget {
                           ref.read(authControllerProvider.notifier).logout(),
                       child: const Text('Выйти'),
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Google и Apple Sign-In подключим после настройки аккаунтов разработчика.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+          Text(
+            'Уведомления',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 8),
+          if (!DefaultFirebaseOptions.isConfigured)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Firebase ещё не подключён. После настройки push появятся здесь.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            )
+          else ...[
+            pushReady.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text('Push недоступен: $error'),
+              data: (ready) {
+                if (!ready) {
+                  return const Text('Не удалось инициализировать уведомления.');
+                }
+                return FilledButton.tonal(
+                  onPressed: () async {
+                    final ok = await ref
+                        .read(pushServiceProvider)
+                        .requestPermissionAndRegister();
+                    if (!context.mounted) {
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          ok
+                              ? 'Уведомления включены'
+                              : 'Разрешение не выдано',
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('Включить уведомления'),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            topics.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (selected) => Column(
+                children: _topicOptions.map((entry) {
+                  return SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(entry.value),
+                    value: selected.contains(entry.key),
+                    onChanged: (value) {
+                      ref
+                          .read(pushTopicsProvider.notifier)
+                          .toggle(entry.key, value);
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
           Text(
             'Тема',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
