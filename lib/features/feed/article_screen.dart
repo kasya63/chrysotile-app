@@ -1,0 +1,124 @@
+import 'package:chrysotile_app/features/feed/feed_providers.dart';
+import 'package:chrysotile_app/shared/widgets/error_state.dart';
+import 'package:chrysotile_app/shared/widgets/post_cards.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
+
+void openArticle(BuildContext context, int id) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => ArticleScreen(postId: id),
+    ),
+  );
+}
+
+class ArticleScreen extends ConsumerStatefulWidget {
+  const ArticleScreen({super.key, required this.postId});
+
+  final int postId;
+
+  @override
+  ConsumerState<ArticleScreen> createState() => _ArticleScreenState();
+}
+
+class _ArticleScreenState extends ConsumerState<ArticleScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.microtask(() {
+      ref.read(apiProvider).trackView(widget.postId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final post = ref.watch(postProvider(widget.postId));
+    final bookmarked = ref.watch(isBookmarkedProvider(widget.postId));
+
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          post.maybeWhen(
+            data: (article) => IconButton(
+              tooltip: bookmarked ? 'Убрать из закладок' : 'В закладки',
+              onPressed: () {
+                ref.read(bookmarksProvider.notifier).toggle(article);
+              },
+              icon: Icon(
+                bookmarked ? Icons.bookmark : Icons.bookmark_border,
+              ),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
+      ),
+      body: post.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => ErrorState(
+          message: error.toString(),
+          onRetry: () => ref.invalidate(postProvider(widget.postId)),
+        ),
+        data: (article) => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          children: [
+            if (article.image.hasUrl)
+              PostImageFrame(
+                image: article.image,
+                dateLabel: article.dateDisplay,
+              ),
+            const SizedBox(height: 16),
+            Text(
+              article.title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+            ),
+            if (article.subtitle.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                article.subtitle,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.35,
+                    ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Text(
+              '${article.dateDisplay} · ~${article.readingMin} мин · ${article.views} просмотров',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 20),
+            if ((article.contentHtml ?? '').isNotEmpty)
+              HtmlWidget(
+                article.contentHtml!,
+                textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      height: 1.6,
+                    ),
+              ),
+            if (article.related.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              Text(
+                'Читайте также',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              ...article.related.map(
+                (related) => CompactPostTile(
+                  post: related,
+                  onTap: () => openArticle(context, related.id),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
