@@ -1,3 +1,4 @@
+import 'package:chrysotile_app/features/feed/comments_section.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
 import 'package:chrysotile_app/shared/widgets/post_cards.dart';
@@ -100,6 +101,8 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                       height: 1.6,
                     ),
               ),
+            const SizedBox(height: 28),
+            CommentsSection(postId: article.id),
             if (article.related.isNotEmpty) ...[
               const SizedBox(height: 32),
               Text(

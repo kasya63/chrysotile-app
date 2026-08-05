@@ -1,9 +1,10 @@
-import 'package:chrysotile_app/core/api/chrysotile_api.dart';
+import 'package:chrysotile_app/core/models/auth_models.dart';
 import 'package:chrysotile_app/core/models/post_models.dart';
 import 'package:chrysotile_app/core/storage/bookmarks_store.dart';
+import 'package:chrysotile_app/features/auth/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final apiProvider = Provider<ChrysotileApi>((ref) => ChrysotileApi());
+export 'package:chrysotile_app/features/auth/auth_providers.dart' show apiProvider;
 
 final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final api = ref.watch(apiProvider);
@@ -18,6 +19,12 @@ final postProvider = FutureProvider.family<PostCard, int>((ref, id) async {
 final categoriesProvider = FutureProvider<List<CategoryInfo>>((ref) async {
   final api = ref.watch(apiProvider);
   return api.fetchCategories();
+});
+
+final commentsProvider =
+    FutureProvider.family<List<ArticleComment>, int>((ref, postId) async {
+  final api = ref.watch(apiProvider);
+  return api.fetchComments(postId);
 });
 
 final bookmarksStoreProvider = Provider<BookmarksStore>((ref) {

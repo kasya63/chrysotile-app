@@ -147,6 +147,47 @@ final class Chrysotile_Mobile_API {
 				'permission_callback' => '__return_true',
 			)
 		);
+
+		register_rest_route(
+			self::NS,
+			'/auth/register',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( self::class, 'register_user' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/auth/me',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( self::class, 'get_me' ),
+				'permission_callback' => static function () {
+					return is_user_logged_in();
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/posts/(?P<id>\d+)/comments',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( self::class, 'get_comments' ),
+					'permission_callback' => '__return_true',
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( self::class, 'create_comment' ),
+					'permission_callback' => static function () {
+						return is_user_logged_in();
+					},
+				),
+			)
+		);
 	}
 
 	public static function add_cache_headers( $served, $result, $request, $server ) {
@@ -156,6 +197,12 @@ final class Chrysotile_Mobile_API {
 		}
 
 		if ( 'GET' !== $request->get_method() ) {
+			return $served;
+		}
+
+		// Do not edge-cache auth/me or comment lists (may include pending own comments).
+		if ( false !== strpos( $route, '/auth/' ) || false !== strpos( $route, '/comments' ) ) {
+			header( 'Cache-Control: private, no-store' );
 			return $served;
 		}
 
@@ -286,6 +333,202 @@ final class Chrysotile_Mobile_API {
 		update_post_meta( $post_id, 'chrysotile_views', $views + 1 );
 
 		return new WP_REST_Response( array( 'views' => $views + 1 ), 200 );
+	}
+
+	public static function register_user( WP_REST_Request $request ) {
+		$email    = sanitize_email( (string) $request->get_param( 'email' ) );
+		$password = (string) $request->get_param( 'password' );
+		$name     = sanitize_text_field( (string) $request->get_param( 'name' ) );
+
+		if ( ! is_email( $email ) ) {
+			return new WP_REST_Response( array( 'message' => 'Некорректный email.' ), 400 );
+		}
+
+		if ( strlen( $password ) < 8 ) {
+			return new WP_REST_Response( array( 'message' => 'Пароль должен быть не короче 8 символов.' ), 400 );
+		}
+
+		if ( email_exists( $email ) ) {
+			return new WP_REST_Response( array( 'message' => 'Пользователь с таким email уже есть.' ), 409 );
+		}
+
+		$username_base = sanitize_user( current( explode( '@', $email ) ), true );
+		if ( '' === $username_base ) {
+			$username_base = 'user';
+		}
+
+		$username = $username_base;
+		$i        = 1;
+		while ( username_exists( $username ) ) {
+			$username = $username_base . $i;
+			++$i;
+		}
+
+		$user_id = wp_insert_user(
+			array(
+				'user_login'   => $username,
+				'user_email'   => $email,
+				'user_pass'    => $password,
+				'display_name' => '' !== $name ? $name : $username,
+				'role'         => 'subscriber',
+			)
+		);
+
+		if ( is_wp_error( $user_id ) ) {
+			return new WP_REST_Response( array( 'message' => $user_id->get_error_message() ), 400 );
+		}
+
+		$token_request = new WP_REST_Request( 'POST', '/jwt-auth/v1/token' );
+		$token_request->set_param( 'username', $email );
+		$token_request->set_param( 'password', $password );
+		$token_response = rest_do_request( $token_request );
+		$token_data     = $token_response->get_data();
+
+		if ( $token_response->is_error() || ! is_array( $token_data ) || empty( $token_data['token'] ) ) {
+			return new WP_REST_Response(
+				array(
+					'message' => 'Аккаунт создан, но не удалось выдать токен. Войдите вручную.',
+					'user'    => self::format_user( (int) $user_id ),
+				),
+				201
+			);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'token'             => $token_data['token'],
+				'user_email'        => $token_data['user_email'] ?? $email,
+				'user_nicename'     => $token_data['user_nicename'] ?? $username,
+				'user_display_name' => $token_data['user_display_name'] ?? ( '' !== $name ? $name : $username ),
+				'user'              => self::format_user( (int) $user_id ),
+			),
+			201
+		);
+	}
+
+	public static function get_me(): WP_REST_Response {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
+		return new WP_REST_Response( self::format_user( $user_id ), 200 );
+	}
+
+	public static function get_comments( WP_REST_Request $request ): WP_REST_Response {
+		$post_id = (int) $request->get_param( 'id' );
+		$post    = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post || 'publish' !== $post->post_status ) {
+			return new WP_REST_Response( array( 'message' => 'Post not found.' ), 404 );
+		}
+
+		$current_user = get_current_user_id();
+		$status       = array( 'approve' );
+		if ( $current_user > 0 ) {
+			$status[] = 'hold';
+		}
+
+		$comments = get_comments(
+			array(
+				'post_id' => $post_id,
+				'status'  => $status,
+				'orderby' => 'comment_date_gmt',
+				'order'   => 'ASC',
+				'number'  => 100,
+			)
+		);
+
+		$items = array();
+		foreach ( $comments as $comment ) {
+			if ( ! $comment instanceof WP_Comment ) {
+				continue;
+			}
+
+			$is_hold = '0' === (string) $comment->comment_approved;
+			if ( $is_hold && (int) $comment->user_id !== $current_user ) {
+				continue;
+			}
+
+			$items[] = self::format_comment( $comment );
+		}
+
+		return new WP_REST_Response( array( 'items' => $items ), 200 );
+	}
+
+	public static function create_comment( WP_REST_Request $request ) {
+		$post_id = (int) $request->get_param( 'id' );
+		$post    = get_post( $post_id );
+		$user    = wp_get_current_user();
+
+		if ( ! $post instanceof WP_Post || 'publish' !== $post->post_status ) {
+			return new WP_REST_Response( array( 'message' => 'Post not found.' ), 404 );
+		}
+
+		if ( ! $user->exists() ) {
+			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
+		$content  = trim( wp_strip_all_tags( (string) $request->get_param( 'content' ) ) );
+		$parent   = max( 0, (int) $request->get_param( 'parent' ) );
+
+		if ( '' === $content ) {
+			return new WP_REST_Response( array( 'message' => 'Комментарий не может быть пустым.' ), 400 );
+		}
+
+		if ( strlen( $content ) > 2000 ) {
+			return new WP_REST_Response( array( 'message' => 'Слишком длинный комментарий.' ), 400 );
+		}
+
+		$comment_id = wp_insert_comment(
+			array(
+				'comment_post_ID'      => $post_id,
+				'comment_author'       => $user->display_name,
+				'comment_author_email' => $user->user_email,
+				'comment_author_url'   => '',
+				'comment_content'      => $content,
+				'comment_type'         => 'comment',
+				'comment_parent'       => $parent,
+				'user_id'              => $user->ID,
+				'comment_approved'     => 0, // Premoderation.
+			)
+		);
+
+		if ( ! $comment_id ) {
+			return new WP_REST_Response( array( 'message' => 'Не удалось сохранить комментарий.' ), 500 );
+		}
+
+		$comment = get_comment( $comment_id );
+		if ( ! $comment instanceof WP_Comment ) {
+			return new WP_REST_Response( array( 'message' => 'Не удалось сохранить комментарий.' ), 500 );
+		}
+
+		return new WP_REST_Response( self::format_comment( $comment ), 201 );
+	}
+
+	private static function format_user( int $user_id ): array {
+		$user = get_userdata( $user_id );
+
+		return array(
+			'id'           => $user_id,
+			'email'        => $user ? $user->user_email : '',
+			'display_name' => $user ? $user->display_name : '',
+			'nicename'     => $user ? $user->user_nicename : '',
+		);
+	}
+
+	private static function format_comment( WP_Comment $comment ): array {
+		return array(
+			'id'           => (int) $comment->comment_ID,
+			'post_id'      => (int) $comment->comment_post_ID,
+			'parent'       => (int) $comment->comment_parent,
+			'author'       => $comment->comment_author,
+			'author_id'    => (int) $comment->user_id,
+			'content'      => $comment->comment_content,
+			'date'         => get_comment_date( 'c', $comment ),
+			'date_display' => get_comment_date( '', $comment ),
+			'status'       => '1' === (string) $comment->comment_approved ? 'approved' : 'pending',
+		);
 	}
 
 	private static function query_posts( array $args ): array {
