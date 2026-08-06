@@ -176,6 +176,13 @@ final class Chrysotile_Mobile_API {
 						return is_user_logged_in();
 					},
 				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( self::class, 'delete_me' ),
+					'permission_callback' => static function () {
+						return is_user_logged_in();
+					},
+				),
 			)
 		);
 
@@ -557,6 +564,75 @@ final class Chrysotile_Mobile_API {
 		}
 
 		return new WP_REST_Response( self::format_user( $user_id ), 200 );
+	}
+
+	public static function delete_me( WP_REST_Request $request ) {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
+		$user = get_userdata( $user_id );
+		if ( ! $user instanceof WP_User ) {
+			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
+		// Never allow self-delete for staff accounts from the mobile app.
+		if ( user_can( $user, 'edit_posts' ) || user_can( $user, 'manage_options' ) ) {
+			return new WP_REST_Response(
+				array( 'message' => 'Этот аккаунт нельзя удалить из приложения. Обратитесь к администратору.' ),
+				403
+			);
+		}
+
+		$password = (string) $request->get_param( 'password' );
+		if ( '' === $password ) {
+			return new WP_REST_Response( array( 'message' => 'Укажите пароль для подтверждения.' ), 400 );
+		}
+
+		if ( ! wp_check_password( $password, $user->user_pass, $user_id ) ) {
+			return new WP_REST_Response( array( 'message' => 'Неверный пароль.' ), 403 );
+		}
+
+		$avatar_id = (int) get_user_meta( $user_id, 'chrysotile_avatar_id', true );
+		if ( $avatar_id > 0 ) {
+			wp_delete_attachment( $avatar_id, true );
+			delete_user_meta( $user_id, 'chrysotile_avatar_id' );
+		}
+
+		// Keep public comments, but detach personal identity.
+		$comments = get_comments(
+			array(
+				'user_id' => $user_id,
+				'status'  => 'any',
+			)
+		);
+		foreach ( $comments as $comment ) {
+			if ( ! $comment instanceof WP_Comment ) {
+				continue;
+			}
+			wp_update_comment(
+				array(
+					'comment_ID'           => (int) $comment->comment_ID,
+					'user_id'              => 0,
+					'comment_author'       => 'Удалённый пользователь',
+					'comment_author_email' => '',
+					'comment_author_url'   => '',
+				)
+			);
+		}
+
+		if ( class_exists( 'Chrysotile_Mobile_Push' ) && method_exists( 'Chrysotile_Mobile_Push', 'delete_devices_for_user' ) ) {
+			Chrysotile_Mobile_Push::delete_devices_for_user( $user_id );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		$deleted = wp_delete_user( $user_id );
+		if ( ! $deleted ) {
+			return new WP_REST_Response( array( 'message' => 'Не удалось удалить аккаунт. Попробуйте позже.' ), 500 );
+		}
+
+		return new WP_REST_Response( array( 'ok' => true ), 200 );
 	}
 
 	public static function submit_contact( WP_REST_Request $request ) {

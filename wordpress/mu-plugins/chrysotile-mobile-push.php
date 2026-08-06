@@ -161,6 +161,15 @@ final class Chrysotile_Mobile_Push {
 		return new WP_REST_Response( array( 'ok' => true ), 200 );
 	}
 
+	public static function delete_devices_for_user( int $user_id ): void {
+		if ( $user_id <= 0 ) {
+			return;
+		}
+
+		global $wpdb;
+		$wpdb->delete( self::table_name(), array( 'user_id' => $user_id ) );
+	}
+
 	public static function on_status_change( string $new_status, string $old_status, $post ): void {
 		if ( 'publish' !== $new_status || 'publish' === $old_status ) {
 			return;

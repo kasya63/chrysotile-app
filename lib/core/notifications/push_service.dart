@@ -188,6 +188,18 @@ class PushService {
     );
   }
 
+  Future<void> unregisterCurrentDevice() async {
+    final token = _token;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    try {
+      await _api.unregisterDevice(token);
+    } catch (error, stack) {
+      debugPrint('Unregister device failed: $error\n$stack');
+    }
+  }
+
   void _showForeground(RemoteMessage message) {
     final notification = message.notification;
     final postId = message.data['post_id'];

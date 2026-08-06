@@ -184,6 +184,13 @@ class ChrysotileApi {
     return AuthUser.fromJson(response.data ?? {});
   }
 
+  Future<void> deleteAccount({required String password}) async {
+    await _dio.delete<void>(
+      '/auth/me',
+      data: {'password': password},
+    );
+  }
+
   Future<void> submitContact({
     String? name,
     String? phone,

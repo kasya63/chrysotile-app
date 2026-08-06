@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chrysotile_app/core/config/app_config.dart';
+import 'package:chrysotile_app/core/notifications/push_service.dart';
 import 'package:chrysotile_app/core/storage/text_scale_store.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/core/theme/text_scale_provider.dart';
@@ -11,6 +12,7 @@ import 'package:chrysotile_app/features/profile/feedback_screen.dart';
 import 'package:chrysotile_app/features/profile/notifications_screen.dart';
 import 'package:chrysotile_app/features/legal/legal_document_screen.dart';
 import 'package:chrysotile_app/shared/widgets/theme_toggle.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -64,207 +66,200 @@ class ProfileScreen extends ConsumerWidget {
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
+            padding: EdgeInsets.zero,
             children: [
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    Row(
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 48,
+                    backgroundColor: AppColors.blueSoft,
+                    backgroundImage: user?.avatarUrl.isNotEmpty == true
+                        ? CachedNetworkImageProvider(user!.avatarUrl)
+                        : null,
+                    child: user?.avatarUrl.isNotEmpty == true
+                        ? null
+                        : Icon(
+                            Icons.person,
+                            size: 48,
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 48,
-                          backgroundColor: AppColors.blueSoft,
-                          backgroundImage: user?.avatarUrl.isNotEmpty == true
-                              ? CachedNetworkImageProvider(user!.avatarUrl)
-                              : null,
-                          child: user?.avatarUrl.isNotEmpty == true
-                              ? null
-                              : Icon(
-                                  Icons.person,
-                                  size: 48,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?.displayName.isNotEmpty == true
-                                    ? user!.displayName
-                                    : 'Гость',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDarkTheme
-                                      ? AppColors.darkText
-                                      : Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                user == null
-                                    ? 'Войдите, чтобы комментировать'
-                                    : user.email,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isDarkTheme
-                                      ? AppColors.darkTextSoft
-                                      : Colors.black.withValues(alpha: 0.6),
-                                ),
-                              ),
-                              if (user == null) ...[
-                                const SizedBox(height: 10),
-                                FilledButton(
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => const LoginScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: const Text('Войти'),
-                                ),
-                              ],
-                            ],
+                        Text(
+                          user?.displayName.isNotEmpty == true
+                              ? user!.displayName
+                              : 'Гость',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w500,
+                            color: isDarkTheme
+                                ? AppColors.darkText
+                                : Colors.black,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-                    _MenuCard(
-                      items: [
-                        _MenuItem(
-                          label: 'Уведомления',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const NotificationsScreen(),
-                              ),
-                            );
-                          },
+                        const SizedBox(height: 4),
+                        Text(
+                          user == null
+                              ? 'Войдите, чтобы комментировать'
+                              : user.email,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkTheme
+                                ? AppColors.darkTextSoft
+                                : Colors.black.withValues(alpha: 0.6),
+                          ),
                         ),
-                        _MenuItem(
-                          label: 'Обратная связь',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const FeedbackScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        _MenuItem(
-                          label: 'Политика конфиденциальности',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LegalDocumentScreen(
-                                  title: 'Политика конфиденциальности',
-                                  assetPath: AppConfig.privacyPolicyAsset,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        _MenuItem(
-                          label: 'Условия использования',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LegalDocumentScreen(
-                                  title: 'Условия использования',
-                                  assetPath: AppConfig.termsAsset,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        if (user != null)
-                          _MenuItem(
-                            label: 'Редактировать профиль',
-                            onTap: () {
+                        if (user == null) ...[
+                          const SizedBox(height: 10),
+                          FilledButton(
+                            onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
-                                  builder: (_) => const EditProfileScreen(),
+                                  builder: (_) => const LoginScreen(),
                                 ),
                               );
                             },
+                            child: const Text('Войти'),
                           ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 28),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Тема',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: isDarkTheme
-                                  ? AppColors.darkText
-                                  : Colors.black,
-                            ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              _MenuCard(
+                items: [
+                  _MenuItem(
+                    label: 'Уведомления',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const NotificationsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuItem(
+                    label: 'Обратная связь',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const FeedbackScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _MenuItem(
+                    label: 'Политика конфиденциальности',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const LegalDocumentScreen(
+                            title: 'Политика конфиденциальности',
+                            assetPath: AppConfig.privacyPolicyAsset,
                           ),
                         ),
-                        ThemeToggle(
-                          isDark: effectiveIsDark,
-                          onChanged: (dark) {
-                            ref.read(themeModeProvider.notifier).state =
-                                dark ? ThemeMode.dark : ThemeMode.light;
-                          },
+                      );
+                    },
+                  ),
+                  _MenuItem(
+                    label: 'Условия использования',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const LegalDocumentScreen(
+                            title: 'Условия использования',
+                            assetPath: AppConfig.termsAsset,
+                          ),
                         ),
-                      ],
+                      );
+                    },
+                  ),
+                  if (user != null)
+                    _MenuItem(
+                      label: 'Редактировать профиль',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const EditProfileScreen(),
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Размер шрифта',
+                ],
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Тема',
                       style: TextStyle(
                         fontSize: 16,
                         color:
                             isDarkTheme ? AppColors.darkText : Colors.black,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    SegmentedButton<double>(
-                      segments: const [
-                        ButtonSegment<double>(
-                          value: TextScaleStore.normal,
-                          label: Text('А', style: TextStyle(fontSize: 14)),
-                          tooltip: 'Обычный',
-                        ),
-                        ButtonSegment<double>(
-                          value: TextScaleStore.larger,
-                          label: Text('А', style: TextStyle(fontSize: 18)),
-                          tooltip: 'Крупнее',
-                        ),
-                        ButtonSegment<double>(
-                          value: TextScaleStore.largest,
-                          label: Text('А', style: TextStyle(fontSize: 22)),
-                          tooltip: 'Ещё крупнее',
-                        ),
-                      ],
-                      selected: {textScale},
-                      onSelectionChanged: (value) {
-                        ref
-                            .read(textScaleProvider.notifier)
-                            .setScale(value.first);
-                      },
-                      showSelectedIcon: false,
-                    ),
-                    const SizedBox(height: 24),
-                    const _SocialRow(links: _socialLinks),
-                  ],
+                  ),
+                  ThemeToggle(
+                    isDark: effectiveIsDark,
+                    onChanged: (dark) {
+                      ref.read(themeModeProvider.notifier).state =
+                          dark ? ThemeMode.dark : ThemeMode.light;
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Размер шрифта',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDarkTheme ? AppColors.darkText : Colors.black,
                 ),
               ),
+              const SizedBox(height: 10),
+              SegmentedButton<double>(
+                segments: const [
+                  ButtonSegment<double>(
+                    value: TextScaleStore.normal,
+                    label: Text('А', style: TextStyle(fontSize: 14)),
+                    tooltip: 'Обычный',
+                  ),
+                  ButtonSegment<double>(
+                    value: TextScaleStore.larger,
+                    label: Text('А', style: TextStyle(fontSize: 18)),
+                    tooltip: 'Крупнее',
+                  ),
+                  ButtonSegment<double>(
+                    value: TextScaleStore.largest,
+                    label: Text('А', style: TextStyle(fontSize: 22)),
+                    tooltip: 'Ещё крупнее',
+                  ),
+                ],
+                selected: {textScale},
+                onSelectionChanged: (value) {
+                  ref.read(textScaleProvider.notifier).setScale(value.first);
+                },
+                showSelectedIcon: false,
+              ),
+              const SizedBox(height: 24),
+              const _SocialRow(links: _socialLinks),
               if (user != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 24),
                 InkWell(
-                  onTap: () =>
-                      ref.read(authControllerProvider.notifier).logout(),
+                  onTap: () async {
+                    await ref
+                        .read(pushServiceProvider)
+                        .unregisterCurrentDevice();
+                    await ref.read(authControllerProvider.notifier).logout();
+                  },
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -284,6 +279,30 @@ class ProfileScreen extends ConsumerWidget {
                             color: isDarkTheme
                                 ? AppColors.darkText
                                 : Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => _confirmAndDeleteAccount(context, ref),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          size: 24,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Удалить аккаунт',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Theme.of(context).colorScheme.error,
                           ),
                         ),
                       ],
@@ -313,7 +332,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 24),
                   child: Text(
                     AppConfig.siteName,
                     style: TextStyle(
@@ -329,6 +348,125 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+Future<void> _confirmAndDeleteAccount(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final passwordController = TextEditingController();
+  var obscure = true;
+  var submitting = false;
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Удалить аккаунт?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Профиль, аватар и доступ по этому email будут удалены без возможности восстановления. Комментарии останутся как от «Удалённого пользователя».',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscure,
+                  enabled: !submitting,
+                  autofillHints: const [AutofillHints.password],
+                  decoration: InputDecoration(
+                    labelText: 'Пароль',
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(() => obscure = !obscure),
+                      icon: Icon(
+                        obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: submitting
+                    ? null
+                    : () async {
+                        final password = passwordController.text;
+                        if (password.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Введите пароль для подтверждения'),
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() => submitting = true);
+                        try {
+                          await ref
+                              .read(pushServiceProvider)
+                              .unregisterCurrentDevice();
+                          await ref
+                              .read(authControllerProvider.notifier)
+                              .deleteAccount(password: password);
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop(true);
+                          }
+                        } catch (error) {
+                          setState(() => submitting = false);
+                          if (!context.mounted) {
+                            return;
+                          }
+                          final message = error is DioException
+                              ? (error.response?.data is Map
+                                  ? (error.response!.data['message']
+                                          as String? ??
+                                      error.message)
+                                  : error.message)
+                              : error.toString();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                message ?? 'Не удалось удалить аккаунт',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Удалить'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  passwordController.dispose();
+
+  if (confirmed == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Аккаунт удалён')),
     );
   }
 }

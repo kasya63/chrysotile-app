@@ -54,23 +54,44 @@ dart run flutter_native_splash:create
 ssh chrysotile
 ```
 
+## Android release signing
+
+Локально (не коммитится):
+
+- `android/upload-keystore.p12` — upload keystore
+- `android/key.properties` — пароли и alias
+
+Шаблон: `android/key.properties.example`.
+
+Сборка AAB для Play Console:
+
+```bash
+flutter build appbundle --release
+```
+
+Файл: `build/app/outputs/bundle/release/app-release.aab`.
+
+**Важно:** сделайте резервную копию `.p12` и `key.properties` вне репозитория. Потеря ключа = нельзя обновлять приложение в Play с тем же applicationId.
+
 ## Юридические страницы (стор)
 
 Тексты для App Store / Google Play лежат в `assets/legal/`:
 
-- `privacy_policy_ru.md` → опубликовать на сайте как `https://chrysotile.kz/privacy-policy/`
-- `terms_ru.md` → опубликовать как `https://chrysotile.kz/terms/`
+- `privacy_policy_ru.md` → `https://chrysotile.kz/privacy-policy/`
+- `terms_ru.md` → `https://chrysotile.kz/terms/`
+- `delete_account_ru.md` → `https://chrysotile.kz/delete-account/` (нужен для Google Play)
 
-В приложении: **Профиль → Политика / Условия**.
+В приложении: **Профиль → Политика / Условия**, для входа — **Удалить аккаунт**.
 
 В консолях после публикации страниц:
 
 - **App Store Connect** → App Privacy / App Information → Privacy Policy URL
-- **Google Play Console** → Policy → App content → Privacy policy (и Data safety)
+- **Google Play Console** → Policy → App content → Privacy policy + Data safety
+- **Google Play** → Data safety → URL удаления аккаунта: `https://chrysotile.kz/delete-account/`
 
 ## Следующие шаги
 
-1. Опубликовать privacy/terms на chrysotile.kz (если ещё не опубликованы)
-2. Удаление аккаунта in-app + web (обязательно при наличии auth)
-3. Release signing Android, store listing / скриншоты
-4. App Privacy / Data safety / News declaration в сторах
+1. Опубликовать privacy/terms/delete-account на chrysotile.kz
+2. Store listing / скриншоты
+3. App Privacy / Data safety / News declaration в сторах
+4. Забэкапить android upload keystore вне репо

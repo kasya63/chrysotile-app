@@ -4,6 +4,7 @@ class AppConfig {
   static const siteUrl = 'https://chrysotile.kz';
   static const privacyPolicyUrl = 'https://chrysotile.kz/privacy-policy/';
   static const termsUrl = 'https://chrysotile.kz/terms/';
+  static const accountDeletionUrl = 'https://chrysotile.kz/delete-account/';
   static const supportEmail = 'editor@km.kz';
 
   static const privacyPolicyAsset = 'assets/legal/privacy_policy_ru.md';

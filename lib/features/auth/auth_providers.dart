@@ -72,6 +72,12 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     state = const AsyncData(null);
   }
 
+  Future<void> deleteAccount({required String password}) async {
+    await ref.read(apiProvider).deleteAccount(password: password);
+    await ref.read(tokenStorageProvider).clear();
+    state = const AsyncData(null);
+  }
+
   Future<void> updateProfile({
     required String firstName,
     required String lastName,
