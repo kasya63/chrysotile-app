@@ -1,15 +1,18 @@
+import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/features/categories/category_feed_screen.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Fallback list of categories (chips on home cover the main flow).
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoriesProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -37,29 +40,73 @@ class CategoriesScreen extends ConsumerWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final category = items[index];
-                return ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  title: Text(
-                    category.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text('${category.count} материалов'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => CategoryFeedScreen(
-                          slug: category.slug,
-                          title: category.name,
+                return Material(
+                  color: isDark ? AppColors.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CategoryFeedScreen(
+                            slug: category.slug,
+                            title: category.name,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.border,
+                          width: 0.5,
                         ),
                       ),
-                    );
-                  },
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  category.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppColors.darkText
+                                        : Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${category.count} материалов',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? AppColors.darkTextSoft
+                                        : AppColors.gray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: isDark
+                                ? AppColors.darkTextSoft
+                                : Colors.black45,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               },
             ),

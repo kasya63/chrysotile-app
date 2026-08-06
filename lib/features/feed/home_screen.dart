@@ -1,75 +1,240 @@
-import 'package:chrysotile_app/core/models/post_models.dart';
+import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
-import 'package:chrysotile_app/features/categories/category_feed_screen.dart';
+import 'package:chrysotile_app/features/search/search_screen.dart';
+import 'package:chrysotile_app/shared/widgets/brand_header.dart';
+import 'package:chrysotile_app/shared/widgets/category_chip_bar.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
 import 'package:chrysotile_app/shared/widgets/post_cards.dart';
+import 'package:chrysotile_app/shared/widgets/search_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final feed = ref.watch(homeFeedProvider);
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 320) {
+      ref.read(homeLatestFeedProvider.notifier).loadMore();
+    }
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(homeFeedProvider);
+    await Future.wait([
+      ref.read(homeFeedProvider.future),
+      ref.read(homeLatestFeedProvider.notifier).refresh(),
+    ]);
+  }
+
+  void _openSearch() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SearchScreen(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final homeAsync = ref.watch(homeFeedProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final selectedSlug = ref.watch(homeCategoryFilterProvider);
+    final latest = ref.watch(homeLatestFeedProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chrysotile'),
-      ),
-      body: feed.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => ErrorState(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(homeFeedProvider),
-        ),
-        data: (home) => RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(homeFeedProvider);
-            await ref.read(homeFeedProvider.future);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            children: [
-              if (home.hero.isNotEmpty) ...[
-                Text(
-                  'Главное сегодня',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              const SliverToBoxAdapter(child: BrandHeader()),
+              const SliverToBoxAdapter(
+                child: Divider(height: 0.5, thickness: 0.5, color: Color(0xFF9C9C9C)),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: AppSearchField(
+                    readOnly: true,
+                    onTap: _openSearch,
+                  ),
                 ),
-                const SizedBox(height: 12),
-                LeadPostCard(
-                  post: home.hero.first,
-                  onTap: () => openArticle(context, home.hero.first.id),
+              ),
+              SliverToBoxAdapter(
+                child: categoriesAsync.when(
+                  loading: () => const SizedBox(height: 28),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (categories) => CategoryChipBar(
+                    categories: categories,
+                    selectedSlug: selectedSlug,
+                    onSelected: (slug) {
+                      ref.read(homeCategoryFilterProvider.notifier).state = slug;
+                    },
+                  ),
                 ),
-                if (home.hero.length > 1) ...[
-                  const SizedBox(height: 8),
-                  ...home.hero.skip(1).map(
-                        (post) => CompactPostTile(
-                          post: post,
-                          onTap: () => openArticle(context, post.id),
-                        ),
-                      ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              ...homeAsync.when(
+                loading: () => [
+                  const PrefixedSliverFill(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
                 ],
-                const SizedBox(height: 20),
-              ],
-              ...home.sections.map(
-                (section) => _FeedSectionBlock(
-                  section: section,
-                  onOpenPost: (id) => openArticle(context, id),
-                  onOpenAll: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => CategoryFeedScreen(
-                          slug: section.slug,
-                          title: section.label,
+                error: (error, _) => [
+                  PrefixedSliverFill(
+                    child: ErrorState(
+                      message: error.toString(),
+                      onRetry: () => ref.invalidate(homeFeedProvider),
+                    ),
+                  ),
+                ],
+                data: (home) {
+                  final hero = home.hero.isNotEmpty ? home.hero.first : null;
+                  return [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 2,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: AppColors.blue,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Главное сегодня',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? AppColors.darkText
+                                    : Colors.black,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                    if (hero != null) ...[
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: HeroTodayCard(
+                            post: hero,
+                            onTap: () => openArticle(context, hero.id),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Последние новости',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color:
+                                isDark ? AppColors.darkText : Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SpacedSliverBox(height: 12),
+                    if (latest.loading && latest.items.isEmpty)
+                      const PrefixedSliverFill(
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (latest.error != null && latest.items.isEmpty)
+                      PrefixedSliverFill(
+                        child: ErrorState(
+                          message: latest.error.toString(),
+                          onRetry: () =>
+                              ref.read(homeLatestFeedProvider.notifier).refresh(),
+                        ),
+                      )
+                    else if (latest.items.isEmpty)
+                      PrefixedSliverFill(
+                        child: Center(
+                          child: Text(
+                            'Пока нет материалов',
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppColors.darkTextSoft
+                                  : AppColors.gray,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              if (index >= latest.items.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
+                              final post = latest.items[index];
+                              final bookmarked =
+                                  ref.watch(isBookmarkedProvider(post.id));
+                              return NewsListCard(
+                                post: post,
+                                bookmarked: bookmarked,
+                                onTap: () => openArticle(context, post.id),
+                                onBookmarkTap: () {
+                                  ref
+                                      .read(bookmarksProvider.notifier)
+                                      .toggle(post);
+                                },
+                              );
+                            },
+                            childCount: latest.items.length +
+                                (latest.loadingMore ? 1 : 0),
+                          ),
+                        ),
+                      ),
+                  ];
+                },
               ),
             ],
           ),
@@ -79,57 +244,27 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _FeedSectionBlock extends StatelessWidget {
-  const _FeedSectionBlock({
-    required this.section,
-    required this.onOpenPost,
-    required this.onOpenAll,
-  });
+class PrefixedSliverFill extends StatelessWidget {
+  const PrefixedSliverFill({super.key, required this.child});
 
-  final FeedSection section;
-  final ValueChanged<int> onOpenPost;
-  final VoidCallback onOpenAll;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    if (section.posts.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  section.label,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-              TextButton(
-                onPressed: onOpenAll,
-                child: const Text('Смотреть все'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          LeadPostCard(
-            post: section.posts.first,
-            onTap: () => onOpenPost(section.posts.first.id),
-          ),
-          ...section.posts.skip(1).map(
-                (post) => CompactPostTile(
-                  post: post,
-                  onTap: () => onOpenPost(post.id),
-                ),
-              ),
-        ],
-      ),
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: child,
     );
+  }
+}
+
+class SpacedSliverBox extends StatelessWidget {
+  const SpacedSliverBox({super.key, required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(child: SizedBox(height: height));
   }
 }

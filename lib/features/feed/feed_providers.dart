@@ -4,7 +4,8 @@ import 'package:chrysotile_app/core/storage/bookmarks_store.dart';
 import 'package:chrysotile_app/features/auth/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-export 'package:chrysotile_app/features/auth/auth_providers.dart' show apiProvider;
+export 'package:chrysotile_app/features/auth/auth_providers.dart'
+    show apiProvider;
 
 final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {
   final api = ref.watch(apiProvider);
@@ -25,6 +26,115 @@ final commentsProvider =
     FutureProvider.family<List<ArticleComment>, int>((ref, postId) async {
   final api = ref.watch(apiProvider);
   return api.fetchComments(postId);
+});
+
+/// Selected category slug on home; null = all latest news.
+final homeCategoryFilterProvider = StateProvider<String?>((ref) => null);
+
+class HomeLatestFeedState {
+  const HomeLatestFeedState({
+    this.items = const [],
+    this.page = 0,
+    this.total = 0,
+    this.loading = false,
+    this.loadingMore = false,
+    this.error,
+    this.category,
+  });
+
+  final List<PostCard> items;
+  final int page;
+  final int total;
+  final bool loading;
+  final bool loadingMore;
+  final Object? error;
+  final String? category;
+
+  bool get hasMore => items.length < total;
+
+  HomeLatestFeedState copyWith({
+    List<PostCard>? items,
+    int? page,
+    int? total,
+    bool? loading,
+    bool? loadingMore,
+    Object? error,
+    bool clearError = false,
+    String? category,
+    bool clearCategory = false,
+  }) {
+    return HomeLatestFeedState(
+      items: items ?? this.items,
+      page: page ?? this.page,
+      total: total ?? this.total,
+      loading: loading ?? this.loading,
+      loadingMore: loadingMore ?? this.loadingMore,
+      error: clearError ? null : (error ?? this.error),
+      category: clearCategory ? null : (category ?? this.category),
+    );
+  }
+}
+
+class HomeLatestFeedNotifier extends StateNotifier<HomeLatestFeedState> {
+  HomeLatestFeedNotifier(this._ref) : super(const HomeLatestFeedState()) {
+    refresh();
+  }
+
+  final Ref _ref;
+
+  Future<void> refresh() async {
+    final category = _ref.read(homeCategoryFilterProvider);
+    state = HomeLatestFeedState(loading: true, category: category);
+    try {
+      final api = _ref.read(apiProvider);
+      final page = await api.fetchFeed(category: category, page: 1);
+      if (!mounted) return;
+      state = HomeLatestFeedState(
+        items: page.items,
+        page: page.page,
+        total: page.total,
+        category: category,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      state = HomeLatestFeedState(error: error, category: category);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.loading || state.loadingMore || !state.hasMore) {
+      return;
+    }
+    state = state.copyWith(loadingMore: true, clearError: true);
+    try {
+      final api = _ref.read(apiProvider);
+      final next = await api.fetchFeed(
+        category: state.category,
+        page: state.page + 1,
+      );
+      if (!mounted) return;
+      state = state.copyWith(
+        items: [...state.items, ...next.items],
+        page: next.page,
+        total: next.total,
+        loadingMore: false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      state = state.copyWith(loadingMore: false, error: error);
+    }
+  }
+}
+
+final homeLatestFeedProvider =
+    StateNotifierProvider<HomeLatestFeedNotifier, HomeLatestFeedState>((ref) {
+  final notifier = HomeLatestFeedNotifier(ref);
+  ref.listen<String?>(homeCategoryFilterProvider, (previous, next) {
+    if (previous != next) {
+      notifier.refresh();
+    }
+  });
+  return notifier;
 });
 
 final bookmarksStoreProvider = Provider<BookmarksStore>((ref) {

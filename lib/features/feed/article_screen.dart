@@ -1,3 +1,4 @@
+import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/features/feed/comments_section.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
@@ -36,6 +37,7 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
   Widget build(BuildContext context) {
     final post = ref.watch(postProvider(widget.postId));
     final bookmarked = ref.watch(isBookmarkedProvider(widget.postId));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -48,6 +50,9 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
               },
               icon: Icon(
                 bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                color: bookmarked
+                    ? AppColors.bookmarkFilled
+                    : (isDark ? AppColors.darkText : Colors.black87),
               ),
             ),
             orElse: () => const SizedBox.shrink(),
@@ -66,9 +71,33 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
             if (article.image.hasUrl)
               PostImageFrame(
                 image: article.image,
-                dateLabel: article.dateDisplay,
+                borderRadius: 15,
               ),
             const SizedBox(height: 16),
+            if (article.categories.isNotEmpty) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.blue.withValues(alpha: 0.25)
+                        : AppColors.categoryBadge,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text(
+                    article.categories.first.name,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.blueSoft : AppColors.blue,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Text(
               article.title,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -81,7 +110,9 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
               Text(
                 article.subtitle,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: isDark
+                          ? AppColors.darkTextSoft
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                       height: 1.35,
                     ),
               ),
@@ -90,7 +121,9 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
             Text(
               '${article.dateDisplay} · ~${article.readingMin} мин · ${article.views} просмотров',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: isDark
+                        ? AppColors.darkTextSoft
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
             const SizedBox(height: 20),
@@ -111,12 +144,20 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                       fontWeight: FontWeight.w700,
                     ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               ...article.related.map(
-                (related) => CompactPostTile(
-                  post: related,
-                  onTap: () => openArticle(context, related.id),
-                ),
+                (related) {
+                  final relatedBookmarked =
+                      ref.watch(isBookmarkedProvider(related.id));
+                  return NewsListCard(
+                    post: related,
+                    bookmarked: relatedBookmarked,
+                    onTap: () => openArticle(context, related.id),
+                    onBookmarkTap: () {
+                      ref.read(bookmarksProvider.notifier).toggle(related);
+                    },
+                  );
+                },
               ),
             ],
           ],

@@ -21,6 +21,7 @@ class CategoryFeedScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoryFeedScreenState extends ConsumerState<CategoryFeedScreen> {
+  final _scrollController = ScrollController();
   PaginatedPosts? _feed;
   Object? _error;
   bool _loading = true;
@@ -29,7 +30,28 @@ class _CategoryFeedScreenState extends ConsumerState<CategoryFeedScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _load(page: 1);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final feed = _feed;
+    if (feed != null &&
+        feed.hasMore &&
+        !_loadingMore &&
+        position.pixels >= position.maxScrollExtent - 320) {
+      _load(page: feed.page + 1);
+    }
   }
 
   Future<void> _load({required int page}) async {
@@ -97,37 +119,26 @@ class _CategoryFeedScreenState extends ConsumerState<CategoryFeedScreen> {
     return RefreshIndicator(
       onRefresh: () => _load(page: 1),
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        itemCount: feed.items.length + (feed.hasMore ? 1 : 0),
+        itemCount: feed.items.length + (feed.hasMore || _loadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= feed.items.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: _loadingMore
-                    ? const CircularProgressIndicator()
-                    : TextButton(
-                        onPressed: () => _load(page: feed.page + 1),
-                        child: const Text('Показать ещё'),
-                      ),
-              ),
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
             );
           }
 
           final post = feed.items[index];
-          if (index == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: LeadPostCard(
-                post: post,
-                onTap: () => openArticle(context, post.id),
-              ),
-            );
-          }
-
-          return CompactPostTile(
+          final bookmarked = ref.watch(isBookmarkedProvider(post.id));
+          return NewsListCard(
             post: post,
+            bookmarked: bookmarked,
             onTap: () => openArticle(context, post.id),
+            onBookmarkTap: () {
+              ref.read(bookmarksProvider.notifier).toggle(post);
+            },
           );
         },
       ),

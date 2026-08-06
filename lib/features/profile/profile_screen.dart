@@ -1,19 +1,13 @@
-import 'package:chrysotile_app/core/notifications/push_service.dart';
+import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/core/theme/theme_mode_provider.dart';
 import 'package:chrysotile_app/features/auth/auth_providers.dart';
 import 'package:chrysotile_app/features/auth/login_screen.dart';
-import 'package:chrysotile_app/firebase_options.dart';
+import 'package:chrysotile_app/features/profile/notifications_screen.dart';
+import 'package:chrysotile_app/shared/widgets/brand_header.dart';
+import 'package:chrysotile_app/shared/widgets/stub_page.dart';
+import 'package:chrysotile_app/shared/widgets/theme_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-const _topicOptions = <MapEntry<String, String>>[
-  MapEntry('cat_glavnye', 'Главное'),
-  MapEntry('cat_gosudarstvo', 'В стране'),
-  MapEntry('cat_region', 'В регионе'),
-  MapEntry('cat_people', 'Люди'),
-  MapEntry('cat_society', 'Общество'),
-  MapEntry('cat_special_projects', 'Спецпроекты'),
-];
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -23,183 +17,233 @@ class ProfileScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final auth = ref.watch(authControllerProvider);
     final user = auth.valueOrNull;
-    final pushReady = ref.watch(pushReadyProvider);
-    final topics = ref.watch(pushTopicsProvider);
+    final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
+    final effectiveIsDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system && isDarkTheme);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профиль'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const BrandHeader(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 children: [
-                  Text(
-                    user?.displayName.isNotEmpty == true
-                        ? user!.displayName
-                        : 'Гость',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    user == null
-                        ? 'Читайте новости без входа. Для комментариев войдите по email.'
-                        : user.email,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (user == null)
-                    FilledButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const LoginScreen(),
+                  Row(
+                    children: [
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppColors.blueSoft, AppColors.blueDark],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        );
-                      },
-                      child: const Text('Войти'),
-                    )
-                  else
-                    OutlinedButton(
-                      onPressed: () =>
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          size: 48,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user?.displayName.isNotEmpty == true
+                                  ? user!.displayName
+                                  : 'Гость',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                                color: isDarkTheme
+                                    ? AppColors.darkText
+                                    : Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user == null
+                                  ? 'Войдите, чтобы комментировать'
+                                  : user.email,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isDarkTheme
+                                    ? AppColors.darkTextSoft
+                                    : Colors.black.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            if (user == null) ...[
+                              const SizedBox(height: 10),
+                              FilledButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const LoginScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Войти'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  _MenuCard(
+                    items: [
+                      _MenuItem(
+                        label: 'Уведомления',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const NotificationsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _MenuItem(
+                        label: 'Обратная связь',
+                        onTap: () => _openStub(context, 'Обратная связь'),
+                      ),
+                      _MenuItem(
+                        label: 'О приложении',
+                        onTap: () => _openStub(context, 'О приложении'),
+                      ),
+                      _MenuItem(
+                        label: 'Редактировать профиль',
+                        onTap: () =>
+                            _openStub(context, 'Редактировать профиль'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Тема',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkTheme
+                                ? AppColors.darkText
+                                : Colors.black,
+                          ),
+                        ),
+                      ),
+                      ThemeToggle(
+                        isDark: effectiveIsDark,
+                        onChanged: (dark) {
+                          ref.read(themeModeProvider.notifier).state =
+                              dark ? ThemeMode.dark : ThemeMode.light;
+                        },
+                      ),
+                    ],
+                  ),
+                  if (user != null) ...[
+                    const SizedBox(height: 32),
+                    InkWell(
+                      onTap: () =>
                           ref.read(authControllerProvider.notifier).logout(),
-                      child: const Text('Выйти'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.logout,
+                              size: 24,
+                              color: isDarkTheme
+                                  ? AppColors.darkText
+                                  : Colors.black,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Выйти',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isDarkTheme
+                                    ? AppColors.darkText
+                                    : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                  ],
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Уведомления',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          if (!DefaultFirebaseOptions.isConfigured)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Firebase ещё не подключён. После настройки push появятся здесь.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openStub(BuildContext context, String title) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => StubPageScreen(title: title),
+      ),
+    );
+  }
+}
+
+class _MenuCard extends StatelessWidget {
+  const _MenuCard({required this.items});
+
+  final List<_MenuItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor =
+        isDark ? AppColors.darkBorder : Colors.black.withValues(alpha: 0.2);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: 0.5),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              Divider(height: 0.5, thickness: 0.5, color: borderColor),
+            ListTile(
+              title: Text(
+                items[i].label,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? AppColors.darkText : Colors.black,
                 ),
               ),
-            )
-          else ...[
-            pushReady.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (error, _) => Text('Push недоступен: $error'),
-              data: (ready) {
-                if (!ready) {
-                  return const Text('Не удалось инициализировать уведомления.');
-                }
-                return FilledButton.tonal(
-                  onPressed: () async {
-                    final ok = await ref
-                        .read(pushServiceProvider)
-                        .requestPermissionAndRegister();
-                    if (!context.mounted) {
-                      return;
-                    }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          ok
-                              ? 'Уведомления включены'
-                              : 'Разрешение не выдано',
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('Включить уведомления'),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            topics.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (selected) => Column(
-                children: _topicOptions.map((entry) {
-                  return SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(entry.value),
-                    value: selected.contains(entry.key),
-                    onChanged: (value) {
-                      ref
-                          .read(pushTopicsProvider.notifier)
-                          .toggle(entry.key, value);
-                    },
-                  );
-                }).toList(),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: isDark ? AppColors.darkTextSoft : Colors.black45,
               ),
+              onTap: items[i].onTap,
             ),
           ],
-          const SizedBox(height: 20),
-          Text(
-            'Тема',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          _ThemeOption(
-            label: 'Как в системе',
-            selected: themeMode == ThemeMode.system,
-            onTap: () =>
-                ref.read(themeModeProvider.notifier).state = ThemeMode.system,
-          ),
-          _ThemeOption(
-            label: 'Светлая',
-            selected: themeMode == ThemeMode.light,
-            onTap: () =>
-                ref.read(themeModeProvider.notifier).state = ThemeMode.light,
-          ),
-          _ThemeOption(
-            label: 'Тёмная',
-            selected: themeMode == ThemeMode.dark,
-            onTap: () =>
-                ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
-          ),
         ],
       ),
     );
   }
 }
 
-class _ThemeOption extends StatelessWidget {
-  const _ThemeOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+class _MenuItem {
+  const _MenuItem({required this.label, required this.onTap});
 
   final String label;
-  final bool selected;
   final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label),
-      trailing: selected
-          ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-          : null,
-      onTap: onTap,
-    );
-  }
 }

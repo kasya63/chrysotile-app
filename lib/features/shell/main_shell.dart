@@ -1,8 +1,7 @@
 import 'package:chrysotile_app/features/bookmarks/bookmarks_screen.dart';
-import 'package:chrysotile_app/features/categories/categories_screen.dart';
 import 'package:chrysotile_app/features/feed/home_screen.dart';
 import 'package:chrysotile_app/features/profile/profile_screen.dart';
-import 'package:chrysotile_app/features/search/search_screen.dart';
+import 'package:chrysotile_app/shared/widgets/app_bottom_nav.dart';
 import 'package:flutter/material.dart';
 
 class MainShell extends StatefulWidget {
@@ -17,8 +16,6 @@ class _MainShellState extends State<MainShell> {
 
   static const _tabs = [
     HomeScreen(),
-    CategoriesScreen(),
-    SearchScreen(),
     BookmarksScreen(),
     ProfileScreen(),
   ];
@@ -30,36 +27,9 @@ class _MainShellState extends State<MainShell> {
         index: _index,
         children: _tabs,
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: AppBottomNav(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Главная',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view),
-            label: 'Рубрики',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search),
-            label: 'Поиск',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bookmark_border),
-            selectedIcon: Icon(Icons.bookmark),
-            label: 'Закладки',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Профиль',
-          ),
-        ],
+        onSelected: (value) => setState(() => _index = value),
       ),
     );
   }
