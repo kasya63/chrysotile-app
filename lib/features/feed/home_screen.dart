@@ -1,4 +1,5 @@
 import 'package:chrysotile_app/core/theme/app_theme.dart';
+import 'package:chrysotile_app/features/bookmarks/bookmark_save.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/features/search/search_screen.dart';
@@ -225,9 +226,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 bookmarked: bookmarked,
                                 onTap: () => openArticle(context, post.id),
                                 onBookmarkTap: () {
-                                  ref
-                                      .read(bookmarksProvider.notifier)
-                                      .toggle(post);
+                                  handleBookmarkTap(
+                                    context: context,
+                                    ref: ref,
+                                    post: post,
+                                  );
                                 },
                               );
                             },

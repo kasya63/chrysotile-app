@@ -1,5 +1,6 @@
 import 'package:chrysotile_app/core/notifications/push_service.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
+import 'package:chrysotile_app/core/theme/text_scale_provider.dart';
 import 'package:chrysotile_app/core/theme/theme_mode_provider.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
 import 'package:chrysotile_app/features/shell/main_shell.dart';
@@ -48,6 +49,7 @@ class _ChrysotileAppState extends ConsumerState<ChrysotileApp> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final textScale = ref.watch(textScaleProvider);
 
     return MaterialApp(
       navigatorKey: navigatorKey,
@@ -56,6 +58,15 @@ class _ChrysotileAppState extends ConsumerState<ChrysotileApp> {
       themeMode: themeMode,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const MainShell(),
     );
   }

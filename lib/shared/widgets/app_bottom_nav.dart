@@ -18,6 +18,7 @@ class AppBottomNav extends StatelessWidget {
     final inactive =
         isDark ? AppColors.darkTextSoft : Colors.black.withValues(alpha: 0.45);
     final active = isDark ? AppColors.darkText : Colors.black;
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
 
     return Material(
       elevation: 0,
@@ -47,6 +48,7 @@ class AppBottomNav extends StatelessWidget {
                   selected: selectedIndex == 0,
                   activeColor: active,
                   inactiveColor: inactive,
+                  animate: !disableAnimations,
                   onTap: () => onSelected(0),
                 ),
                 _NavItem(
@@ -55,6 +57,7 @@ class AppBottomNav extends StatelessWidget {
                   selected: selectedIndex == 1,
                   activeColor: active,
                   inactiveColor: inactive,
+                  animate: !disableAnimations,
                   onTap: () => onSelected(1),
                 ),
                 _NavItem(
@@ -63,6 +66,7 @@ class AppBottomNav extends StatelessWidget {
                   selected: selectedIndex == 2,
                   activeColor: active,
                   inactiveColor: inactive,
+                  animate: !disableAnimations,
                   onTap: () => onSelected(2),
                 ),
               ],
@@ -81,6 +85,7 @@ class _NavItem extends StatelessWidget {
     required this.selected,
     required this.activeColor,
     required this.inactiveColor,
+    required this.animate,
     required this.onTap,
   });
 
@@ -89,6 +94,7 @@ class _NavItem extends StatelessWidget {
   final bool selected;
   final Color activeColor;
   final Color inactiveColor;
+  final bool animate;
   final VoidCallback onTap;
 
   @override
@@ -96,9 +102,23 @@ class _NavItem extends StatelessWidget {
     return IconButton(
       onPressed: onTap,
       iconSize: 30,
-      icon: Icon(
-        selected ? selectedIcon : icon,
-        color: selected ? activeColor : inactiveColor,
+      icon: AnimatedScale(
+        scale: selected ? 1.08 : 1.0,
+        duration: animate
+            ? const Duration(milliseconds: 180)
+            : Duration.zero,
+        curve: Curves.easeOutCubic,
+        child: AnimatedSwitcher(
+          duration: animate
+              ? const Duration(milliseconds: 180)
+              : Duration.zero,
+          child: Icon(
+            selected ? selectedIcon : icon,
+            key: ValueKey<bool>(selected),
+            color: selected ? activeColor : inactiveColor,
+            size: 30,
+          ),
+        ),
       ),
     );
   }

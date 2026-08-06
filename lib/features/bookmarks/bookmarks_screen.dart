@@ -2,7 +2,6 @@ import 'package:chrysotile_app/core/storage/bookmarks_store.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
-import 'package:chrysotile_app/shared/widgets/brand_header.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
 import 'package:chrysotile_app/shared/widgets/post_cards.dart';
 import 'package:flutter/material.dart';
@@ -19,17 +18,7 @@ class BookmarksScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const BrandHeader(),
-            const Divider(
-              height: 0.5,
-              thickness: 0.5,
-              color: Color(0xFF9C9C9C),
-            ),
-            Expanded(
-              child: bookmarks.when(
+        child: bookmarks.when(
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
                 error: (error, _) => ErrorState(
@@ -165,9 +154,6 @@ class BookmarksScreen extends ConsumerWidget {
                       }),
                   ],
                 ),
-              ),
-            ),
-          ],
         ),
       ),
     );

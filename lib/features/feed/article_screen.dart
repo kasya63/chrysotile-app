@@ -1,4 +1,5 @@
 import 'package:chrysotile_app/core/theme/app_theme.dart';
+import 'package:chrysotile_app/features/bookmarks/bookmark_save.dart';
 import 'package:chrysotile_app/features/feed/comments_section.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
@@ -52,7 +53,11 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
             data: (article) => IconButton(
               tooltip: bookmarked ? 'Убрать из закладок' : 'В закладки',
               onPressed: () {
-                ref.read(bookmarksProvider.notifier).toggle(article);
+                handleBookmarkTap(
+                  context: context,
+                  ref: ref,
+                  post: article,
+                );
               },
               icon: Icon(
                 bookmarked ? Icons.bookmark : Icons.bookmark_border,
@@ -173,7 +178,11 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                       bookmarked: relatedBookmarked,
                       onTap: () => openArticle(context, item.id),
                       onBookmarkTap: () {
-                        ref.read(bookmarksProvider.notifier).toggle(item);
+                        handleBookmarkTap(
+                          context: context,
+                          ref: ref,
+                          post: item,
+                        );
                       },
                     );
                   },

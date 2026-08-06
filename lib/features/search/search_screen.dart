@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chrysotile_app/core/storage/search_history_store.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/core/models/post_models.dart';
+import 'package:chrysotile_app/features/bookmarks/bookmark_save.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/shared/widgets/brand_header.dart';
@@ -374,7 +375,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           bookmarked: bookmarked,
           onTap: () => openArticle(context, post.id),
           onBookmarkTap: () {
-            ref.read(bookmarksProvider.notifier).toggle(post);
+            handleBookmarkTap(
+              context: context,
+              ref: ref,
+              post: post,
+            );
           },
         );
       }),

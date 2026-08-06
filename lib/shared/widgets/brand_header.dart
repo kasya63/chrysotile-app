@@ -1,3 +1,4 @@
+import 'package:chrysotile_app/core/config/app_config.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -22,12 +23,16 @@ class BrandHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            'Chrysotile',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.darkText : Colors.black,
+          Expanded(
+            child: Text(
+              AppConfig.siteName,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.darkText : Colors.black,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

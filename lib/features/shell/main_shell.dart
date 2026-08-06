@@ -22,14 +22,37 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final duration =
+        disableAnimations ? Duration.zero : const Duration(milliseconds: 240);
+
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: _tabs,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          for (var i = 0; i < _tabs.length; i++)
+            IgnorePointer(
+              ignoring: i != _index,
+              child: AnimatedOpacity(
+                opacity: i == _index ? 1 : 0,
+                duration: duration,
+                curve: Curves.easeOutCubic,
+                child: TickerMode(
+                  enabled: i == _index,
+                  child: _tabs[i],
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: AppBottomNav(
         selectedIndex: _index,
-        onSelected: (value) => setState(() => _index = value),
+        onSelected: (value) {
+          if (value == _index) {
+            return;
+          }
+          setState(() => _index = value);
+        },
       ),
     );
   }
