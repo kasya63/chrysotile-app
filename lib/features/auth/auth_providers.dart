@@ -71,6 +71,19 @@ class AuthController extends AsyncNotifier<AuthUser?> {
     await ref.read(tokenStorageProvider).clear();
     state = const AsyncData(null);
   }
+
+  Future<void> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? avatarPath,
+  }) async {
+    final updated = await ref.read(apiProvider).updateMe(
+          firstName: firstName,
+          lastName: lastName,
+          avatarPath: avatarPath,
+        );
+    state = AsyncData(updated);
+  }
 }
 
 final authControllerProvider =

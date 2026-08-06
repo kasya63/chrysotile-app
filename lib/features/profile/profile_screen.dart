@@ -1,13 +1,41 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chrysotile_app/core/config/app_config.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/core/theme/theme_mode_provider.dart';
 import 'package:chrysotile_app/features/auth/auth_providers.dart';
 import 'package:chrysotile_app/features/auth/login_screen.dart';
+import 'package:chrysotile_app/features/profile/edit_profile_screen.dart';
+import 'package:chrysotile_app/features/profile/feedback_screen.dart';
 import 'package:chrysotile_app/features/profile/notifications_screen.dart';
 import 'package:chrysotile_app/shared/widgets/brand_header.dart';
-import 'package:chrysotile_app/shared/widgets/stub_page.dart';
 import 'package:chrysotile_app/shared/widgets/theme_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const _socialLinks = [
+  (
+    asset: 'assets/social/telegram.svg',
+    url: 'https://t.me/gazetakm',
+    label: 'Telegram',
+  ),
+  (
+    asset: 'assets/social/instagram.svg',
+    url: 'https://www.instagram.com/gazetakm/',
+    label: 'Instagram',
+  ),
+  (
+    asset: 'assets/social/youtube.svg',
+    url: 'https://www.youtube.com/channel/UCAkrsp_48W7tEdthJgzu9aA',
+    label: 'YouTube',
+  ),
+  (
+    asset: 'assets/social/ok.svg',
+    url: 'https://ok.ru/profile/572667802596',
+    label: 'OK',
+  ),
+];
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -34,22 +62,19 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 96,
-                        height: 96,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [AppColors.blueSoft, AppColors.blueDark],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          size: 48,
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
+                      CircleAvatar(
+                        radius: 48,
+                        backgroundColor: AppColors.blueSoft,
+                        backgroundImage: user?.avatarUrl.isNotEmpty == true
+                            ? CachedNetworkImageProvider(user!.avatarUrl)
+                            : null,
+                        child: user?.avatarUrl.isNotEmpty == true
+                            ? null
+                            : Icon(
+                                Icons.person,
+                                size: 48,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -113,17 +138,25 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       _MenuItem(
                         label: 'Обратная связь',
-                        onTap: () => _openStub(context, 'Обратная связь'),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const FeedbackScreen(),
+                            ),
+                          );
+                        },
                       ),
-                      _MenuItem(
-                        label: 'О приложении',
-                        onTap: () => _openStub(context, 'О приложении'),
-                      ),
-                      _MenuItem(
-                        label: 'Редактировать профиль',
-                        onTap: () =>
-                            _openStub(context, 'Редактировать профиль'),
-                      ),
+                      if (user != null)
+                        _MenuItem(
+                          label: 'Редактировать профиль',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const EditProfileScreen(),
+                              ),
+                            );
+                          },
+                        ),
                     ],
                   ),
                   const SizedBox(height: 28),
@@ -149,8 +182,26 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: _socialLinks.map((link) {
+                      return IconButton(
+                        tooltip: link.label,
+                        onPressed: () => launchUrl(
+                          Uri.parse(link.url),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        icon: SvgPicture.asset(
+                          link.asset,
+                          width: 28,
+                          height: 28,
+                        ),
+                      );
+                    }).toList(),
+                  ),
                   if (user != null) ...[
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     InkWell(
                       onTap: () =>
                           ref.read(authControllerProvider.notifier).logout(),
@@ -181,19 +232,44 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 28),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => launchUrl(
+                        Uri.parse(
+                          'https://chrysotile.kz/rulse_use_material/',
+                        ),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                      child: Text(
+                        'Правила использования материалов',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isDarkTheme
+                              ? AppColors.blueSoft
+                              : AppColors.blue,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      AppConfig.siteName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkTheme
+                            ? AppColors.darkTextSoft
+                            : AppColors.gray,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _openStub(BuildContext context, String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => StubPageScreen(title: title),
       ),
     );
   }

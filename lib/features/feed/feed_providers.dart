@@ -141,7 +141,7 @@ final bookmarksStoreProvider = Provider<BookmarksStore>((ref) {
   return BookmarksStore();
 });
 
-class BookmarksNotifier extends StateNotifier<AsyncValue<List<PostCard>>> {
+class BookmarksNotifier extends StateNotifier<AsyncValue<BookmarksData>> {
   BookmarksNotifier(this._store) : super(const AsyncValue.loading()) {
     _load();
   }
@@ -153,29 +153,97 @@ class BookmarksNotifier extends StateNotifier<AsyncValue<List<PostCard>>> {
     state = await AsyncValue.guard(_store.load);
   }
 
-  Future<void> toggle(PostCard post) async {
-    final current = List<PostCard>.of(state.value ?? const []);
-    final index = current.indexWhere((item) => item.id == post.id);
+  Future<void> _persist(BookmarksData data) async {
+    state = AsyncValue.data(data);
+    await _store.save(data);
+  }
+
+  Future<void> toggle(PostCard post, {String? folderId}) async {
+    final current = state.value ?? const BookmarksData();
+    final items = List<BookmarkItem>.of(current.items);
+    final index = items.indexWhere((item) => item.post.id == post.id);
     if (index >= 0) {
-      current.removeAt(index);
+      items.removeAt(index);
     } else {
-      current.insert(0, post);
+      items.insert(
+        0,
+        BookmarkItem(
+          post: post,
+          folderId: folderId,
+          savedAt: DateTime.now().toIso8601String(),
+        ),
+      );
     }
-    state = AsyncValue.data(current);
-    await _store.save(current);
+    await _persist(current.copyWith(items: items));
+  }
+
+  Future<void> moveToFolder(int postId, String? folderId) async {
+    final current = state.value ?? const BookmarksData();
+    final items = current.items
+        .map(
+          (item) => item.post.id == postId
+              ? item.copyWith(
+                  folderId: folderId,
+                  clearFolder: folderId == null,
+                )
+              : item,
+        )
+        .toList();
+    await _persist(current.copyWith(items: items));
+  }
+
+  Future<void> createFolder(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    final current = state.value ?? const BookmarksData();
+    final folder = BookmarkFolder(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: trimmed,
+    );
+    await _persist(
+      current.copyWith(folders: [...current.folders, folder]),
+    );
+  }
+
+  Future<void> renameFolder(String id, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    final current = state.value ?? const BookmarksData();
+    final folders = current.folders
+        .map((folder) => folder.id == id ? folder.copyWith(name: trimmed) : folder)
+        .toList();
+    await _persist(current.copyWith(folders: folders));
+  }
+
+  Future<void> deleteFolder(String id) async {
+    final current = state.value ?? const BookmarksData();
+    final folders =
+        current.folders.where((folder) => folder.id != id).toList();
+    final items = current.items
+        .map(
+          (item) => item.folderId == id
+              ? item.copyWith(clearFolder: true)
+              : item,
+        )
+        .toList();
+    await _persist(current.copyWith(folders: folders, items: items));
   }
 
   bool contains(int id) {
-    return state.value?.any((post) => post.id == id) ?? false;
+    return state.value?.items.any((item) => item.post.id == id) ?? false;
   }
 }
 
 final bookmarksProvider =
-    StateNotifierProvider<BookmarksNotifier, AsyncValue<List<PostCard>>>((ref) {
+    StateNotifierProvider<BookmarksNotifier, AsyncValue<BookmarksData>>((ref) {
   return BookmarksNotifier(ref.watch(bookmarksStoreProvider));
 });
 
 final isBookmarkedProvider = Provider.family<bool, int>((ref, id) {
   final bookmarks = ref.watch(bookmarksProvider);
-  return bookmarks.value?.any((post) => post.id == id) ?? false;
+  return bookmarks.value?.items.any((item) => item.post.id == id) ?? false;
 });

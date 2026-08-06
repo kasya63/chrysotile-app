@@ -163,6 +163,46 @@ class ChrysotileApi {
     return AuthUser.fromJson(response.data ?? {});
   }
 
+  Future<AuthUser> updateMe({
+    required String firstName,
+    required String lastName,
+    String? avatarPath,
+  }) async {
+    final formData = FormData.fromMap({
+      'first_name': firstName,
+      'last_name': lastName,
+      if (avatarPath != null && avatarPath.isNotEmpty)
+        'avatar': await MultipartFile.fromFile(
+          avatarPath,
+          filename: avatarPath.split('/').last,
+        ),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/me',
+      data: formData,
+    );
+    return AuthUser.fromJson(response.data ?? {});
+  }
+
+  Future<void> submitContact({
+    String? name,
+    String? phone,
+    String? email,
+    required String message,
+    required bool consent,
+  }) async {
+    await _dio.post<void>(
+      '/contact',
+      data: {
+        'name': ?name,
+        'phone': ?phone,
+        'email': ?email,
+        'message': message,
+        'consent': consent,
+      },
+    );
+  }
+
   Future<List<ArticleComment>> fetchComments(int postId) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/posts/$postId/comments',

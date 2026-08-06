@@ -162,11 +162,30 @@ final class Chrysotile_Mobile_API {
 			self::NS,
 			'/auth/me',
 			array(
-				'methods'             => WP_REST_Server::READABLE,
-				'callback'            => array( self::class, 'get_me' ),
-				'permission_callback' => static function () {
-					return is_user_logged_in();
-				},
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( self::class, 'get_me' ),
+					'permission_callback' => static function () {
+						return is_user_logged_in();
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( self::class, 'update_me' ),
+					'permission_callback' => static function () {
+						return is_user_logged_in();
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/contact',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( self::class, 'submit_contact' ),
+				'permission_callback' => '__return_true',
 			)
 		);
 
@@ -415,6 +434,118 @@ final class Chrysotile_Mobile_API {
 		return new WP_REST_Response( self::format_user( $user_id ), 200 );
 	}
 
+	public static function update_me( WP_REST_Request $request ) {
+		$user_id = get_current_user_id();
+		if ( $user_id <= 0 ) {
+			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
+		$first_name = sanitize_text_field( (string) $request->get_param( 'first_name' ) );
+		$last_name  = sanitize_text_field( (string) $request->get_param( 'last_name' ) );
+
+		if ( '' === $first_name && '' === $last_name ) {
+			return new WP_REST_Response( array( 'message' => 'Укажите имя или фамилию.' ), 400 );
+		}
+
+		$display_name = trim( $first_name . ' ' . $last_name );
+		$nickname     = sanitize_user( $display_name, true );
+		if ( '' === $nickname ) {
+			$nickname = 'user' . $user_id;
+		}
+
+		$nicename_base = sanitize_title( $display_name );
+		if ( '' === $nicename_base ) {
+			$nicename_base = 'user-' . $user_id;
+		}
+		$nicename = $nicename_base;
+		$i        = 1;
+		while ( self::nicename_exists( $nicename, $user_id ) ) {
+			$nicename = $nicename_base . '-' . $i;
+			++$i;
+		}
+
+		$result = wp_update_user(
+			array(
+				'ID'            => $user_id,
+				'first_name'    => $first_name,
+				'last_name'     => $last_name,
+				'nickname'      => $nickname,
+				'display_name'  => $display_name,
+				'user_nicename' => $nicename,
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_REST_Response( array( 'message' => $result->get_error_message() ), 400 );
+		}
+
+		$files = $request->get_file_params();
+		if ( ! empty( $files['avatar'] ) && is_array( $files['avatar'] ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+
+			$attachment_id = media_handle_upload( 'avatar', 0 );
+			if ( ! is_wp_error( $attachment_id ) ) {
+				update_user_meta( $user_id, 'chrysotile_avatar_id', (int) $attachment_id );
+			}
+		}
+
+		return new WP_REST_Response( self::format_user( $user_id ), 200 );
+	}
+
+	public static function submit_contact( WP_REST_Request $request ) {
+		$user_id = get_current_user_id();
+		$user    = $user_id > 0 ? get_userdata( $user_id ) : false;
+
+		$name    = sanitize_text_field( (string) $request->get_param( 'name' ) );
+		$phone   = sanitize_text_field( (string) $request->get_param( 'phone' ) );
+		$email   = sanitize_email( (string) $request->get_param( 'email' ) );
+		$message = sanitize_textarea_field( (string) $request->get_param( 'message' ) );
+		$consent = (bool) $request->get_param( 'consent' );
+
+		if ( $user instanceof WP_User ) {
+			$name  = '' !== $user->display_name ? $user->display_name : $user->user_login;
+			$email = $user->user_email;
+		}
+
+		if ( '' === $name ) {
+			return new WP_REST_Response( array( 'message' => 'Укажите имя.' ), 400 );
+		}
+		if ( ! is_email( $email ) ) {
+			return new WP_REST_Response( array( 'message' => 'Укажите корректный email.' ), 400 );
+		}
+		if ( '' === $message ) {
+			return new WP_REST_Response( array( 'message' => 'Напишите сообщение.' ), 400 );
+		}
+		if ( ! $user && '' === $phone ) {
+			return new WP_REST_Response( array( 'message' => 'Укажите телефон.' ), 400 );
+		}
+		if ( ! $consent ) {
+			return new WP_REST_Response( array( 'message' => 'Нужно согласие на обработку данных.' ), 400 );
+		}
+
+		$admin_email = (string) get_option( 'admin_email' );
+		$subject     = 'Обратная связь из приложения Chrysotile';
+		$body        = "Имя: {$name}\nEmail: {$email}\nТелефон: {$phone}\n\nСообщение:\n{$message}\n";
+		$headers     = array( 'Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . $email );
+
+		$sent = wp_mail( $admin_email, $subject, $body, $headers );
+		if ( ! $sent ) {
+			return new WP_REST_Response( array( 'message' => 'Не удалось отправить сообщение. Попробуйте позже.' ), 500 );
+		}
+
+		return new WP_REST_Response( array( 'ok' => true ), 200 );
+	}
+
+	private static function nicename_exists( string $nicename, int $exclude_user_id ): bool {
+		$user = get_user_by( 'slug', $nicename );
+		if ( ! $user ) {
+			return false;
+		}
+		return (int) $user->ID !== $exclude_user_id;
+	}
+
 	public static function get_comments( WP_REST_Request $request ): WP_REST_Response {
 		$post_id = (int) $request->get_param( 'id' );
 		$post    = get_post( $post_id );
@@ -508,12 +639,27 @@ final class Chrysotile_Mobile_API {
 
 	private static function format_user( int $user_id ): array {
 		$user = get_userdata( $user_id );
+		$avatar_id = (int) get_user_meta( $user_id, 'chrysotile_avatar_id', true );
+		$avatar_url = '';
+		if ( $avatar_id > 0 ) {
+			$url = wp_get_attachment_image_url( $avatar_id, 'thumbnail' );
+			if ( is_string( $url ) ) {
+				$avatar_url = $url;
+			}
+		}
+		if ( '' === $avatar_url ) {
+			$avatar_url = (string) get_avatar_url( $user_id, array( 'size' => 192 ) );
+		}
 
 		return array(
 			'id'           => $user_id,
 			'email'        => $user ? $user->user_email : '',
 			'display_name' => $user ? $user->display_name : '',
 			'nicename'     => $user ? $user->user_nicename : '',
+			'first_name'   => $user ? (string) $user->first_name : '',
+			'last_name'    => $user ? (string) $user->last_name : '',
+			'nickname'     => $user ? (string) $user->nickname : '',
+			'avatar_url'   => $avatar_url,
 		);
 	}
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chrysotile_app/core/storage/search_history_store.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/core/models/post_models.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
@@ -21,12 +22,6 @@ const _popularQueries = [
   'спорт',
 ];
 
-const _stubRecent = [
-  'Житикара отмечает день рождение',
-  'На ГОКе запустили новую линию',
-  'Фестиваль творчества в Житикаре',
-];
-
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -37,18 +32,30 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  final _historyStore = SearchHistoryStore();
   Timer? _debounce;
   String _query = '';
   PaginatedPosts? _results;
   Object? _error;
   bool _loading = false;
   bool _loadingMore = false;
-  List<String> _recent = List<String>.of(_stubRecent);
+  List<String> _recent = const [];
+  bool _historyReady = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final items = await _historyStore.load();
+    if (!mounted) return;
+    setState(() {
+      _recent = items;
+      _historyReady = true;
+    });
   }
 
   @override
@@ -100,6 +107,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _runSearch(value);
   }
 
+  Future<void> _persistRecent(List<String> items) async {
+    setState(() => _recent = items);
+    await _historyStore.save(items);
+  }
+
+  Future<void> _clearRecent() async {
+    setState(() => _recent = const []);
+    await _historyStore.clear();
+  }
+
   Future<void> _search({required int page}) async {
     final query = _query;
     if (query.length < 2) {
@@ -129,13 +146,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             : (_results?.merge(pageResult) ?? pageResult);
         _loading = false;
         _loadingMore = false;
-        if (page == 1) {
-          _recent = [
-            query,
-            ..._recent.where((item) => item != query),
-          ].take(8).toList();
-        }
       });
+      if (page == 1) {
+        final next = [
+          query,
+          ..._recent.where((item) => item != query),
+        ].take(8).toList();
+        await _persistRecent(next);
+      }
     } catch (error) {
       if (!mounted || query != _query) {
         return;
@@ -166,7 +184,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 const Expanded(child: BrandHeader()),
               ],
             ),
-            const Divider(height: 0.5, thickness: 0.5, color: Color(0xFF9C9C9C)),
+            const Divider(
+              height: 0.5,
+              thickness: 0.5,
+              color: Color(0xFF9C9C9C),
+            ),
             Expanded(
               child: ListView(
                 controller: _scrollController,
@@ -243,7 +265,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () => setState(() => _recent = []),
+                        onPressed: _recent.isEmpty ? null : _clearRecent,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.blue,
                           textStyle: const TextStyle(fontSize: 10),
@@ -253,7 +275,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                     ],
                   ),
-                  if (_recent.isEmpty)
+                  if (!_historyReady)
+                    const SizedBox.shrink()
+                  else if (_recent.isEmpty)
                     Text(
                       'История пуста',
                       style: TextStyle(

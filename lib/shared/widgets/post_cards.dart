@@ -186,6 +186,7 @@ class NewsListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final image = post.thumbnail.hasUrl ? post.thumbnail : post.image;
+    final hasImage = image.hasUrl;
     final category =
         post.categories.isNotEmpty ? post.categories.first.name : 'Новости';
     final showFilled = bookmarked || forceBookmarkedStyle;
@@ -196,6 +197,80 @@ class NewsListCard extends StatelessWidget {
         ? AppColors.darkTextSoft
         : Colors.black.withValues(alpha: 0.6);
 
+    Widget categoryBadge() => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.blue.withValues(alpha: 0.25)
+                : AppColors.categoryBadge,
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: Text(
+            category,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 7,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.blueSoft : AppColors.blue,
+            ),
+          ),
+        );
+
+    Widget metaRow() => Row(
+          children: [
+            Icon(Icons.calendar_today_outlined, size: 10, color: metaColor),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                post.dateDisplay.isNotEmpty ? post.dateDisplay : 'Дата',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w500,
+                  color: metaColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.remove_red_eye_outlined, size: 12, color: metaColor),
+            const SizedBox(width: 4),
+            Text(
+              '${post.views}',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w500,
+                color: metaColor,
+              ),
+            ),
+          ],
+        );
+
+    Widget? bookmarkButton() {
+      if (onBookmarkTap == null) {
+        return null;
+      }
+      return IconButton(
+        onPressed: onBookmarkTap,
+        visualDensity: VisualDensity.compact,
+        icon: Icon(
+          showFilled ? Icons.bookmark : Icons.bookmark_border,
+          size: 22,
+          color: showFilled
+              ? AppColors.bookmarkFilled
+              : (isDark ? AppColors.darkTextSoft : Colors.black54),
+        ),
+      );
+    }
+
+    final titleStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      height: 1.25,
+      color: isDark ? AppColors.darkText : Colors.black,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -205,133 +280,89 @@ class NewsListCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            height: 80,
+            constraints: BoxConstraints(minHeight: hasImage ? 80 : 72),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: borderColor, width: 0.5),
             ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(10),
-                  ),
-                  child: SizedBox(
-                    width: 117,
+            child: hasImage
+                ? SizedBox(
                     height: 80,
-                    child: image.hasUrl
-                        ? CachedNetworkImage(
-                            imageUrl: image.url,
-                            fit: BoxFit.cover,
-                            placeholder: (_, _) =>
-                                Container(color: placeholder),
-                            errorWidget: (_, _, _) =>
-                                Container(color: placeholder),
-                          )
-                        : Container(color: placeholder),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 6, 4, 6),
-                    child: Column(
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(10),
+                          ),
+                          child: SizedBox(
+                            width: 117,
+                            height: 80,
+                            child: CachedNetworkImage(
+                              imageUrl: image.url,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) =>
+                                  Container(color: placeholder),
+                              errorWidget: (_, _, _) =>
+                                  Container(color: placeholder),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 6, 4, 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                categoryBadge(),
+                                const SizedBox(height: 4),
+                                Expanded(
+                                  child: Text(
+                                    post.title.isNotEmpty
+                                        ? post.title
+                                        : 'Новость',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: titleStyle,
+                                  ),
+                                ),
+                                metaRow(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        bookmarkButton() ?? const SizedBox(width: 8),
+                      ],
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.blue.withValues(alpha: 0.25)
-                                : AppColors.categoryBadge,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          child: Text(
-                            category,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 7,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? AppColors.blueSoft
-                                  : AppColors.blue,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
                         Expanded(
-                          child: Text(
-                            post.title.isNotEmpty ? post.title : 'Новость',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              height: 1.2,
-                              color:
-                                  isDark ? AppColors.darkText : Colors.black,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              categoryBadge(),
+                              const SizedBox(height: 6),
+                              Text(
+                                post.title.isNotEmpty
+                                    ? post.title
+                                    : 'Новость',
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: titleStyle,
+                              ),
+                              const SizedBox(height: 8),
+                              metaRow(),
+                            ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today_outlined,
-                                size: 10, color: metaColor),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                post.dateDisplay.isNotEmpty
-                                    ? post.dateDisplay
-                                    : 'Дата',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w500,
-                                  color: metaColor,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(Icons.remove_red_eye_outlined,
-                                size: 12, color: metaColor),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${post.views}',
-                              style: TextStyle(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w500,
-                                color: metaColor,
-                              ),
-                            ),
-                          ],
-                        ),
+                        bookmarkButton() ?? const SizedBox(width: 8),
                       ],
                     ),
                   ),
-                ),
-                if (onBookmarkTap != null)
-                  IconButton(
-                    onPressed: onBookmarkTap,
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      showFilled ? Icons.bookmark : Icons.bookmark_border,
-                      size: 22,
-                      color: showFilled
-                          ? AppColors.bookmarkFilled
-                          : (isDark
-                              ? AppColors.darkTextSoft
-                              : Colors.black54),
-                    ),
-                  )
-                else
-                  const SizedBox(width: 8),
-              ],
-            ),
           ),
         ),
       ),

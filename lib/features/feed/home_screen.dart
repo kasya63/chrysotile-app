@@ -117,49 +117,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
                 data: (home) {
+                  final showHero = selectedSlug == null;
                   final hero = home.hero.isNotEmpty ? home.hero.first : null;
                   return [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 2,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                color: AppColors.blue,
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            Text(
-                              'Главное сегодня',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? AppColors.darkText
-                                    : Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (hero != null) ...[
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    if (showHero) ...[
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: HeroTodayCard(
-                            post: hero,
-                            onTap: () => openArticle(context, hero.id),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 2,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: AppColors.blue,
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                'Главное сегодня',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? AppColors.darkText
+                                      : Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                      if (hero != null) ...[
+                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: HeroTodayCard(
+                              post: hero,
+                              onTap: () => openArticle(context, hero.id),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
                     ],
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),

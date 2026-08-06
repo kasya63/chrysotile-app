@@ -4,6 +4,10 @@ class AuthUser {
     required this.email,
     required this.displayName,
     required this.nicename,
+    this.firstName = '',
+    this.lastName = '',
+    this.nickname = '',
+    this.avatarUrl = '',
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
@@ -15,6 +19,10 @@ class AuthUser {
           '',
       nicename:
           json['nicename'] as String? ?? json['user_nicename'] as String? ?? '',
+      firstName: json['first_name'] as String? ?? '',
+      lastName: json['last_name'] as String? ?? '',
+      nickname: json['nickname'] as String? ?? '',
+      avatarUrl: json['avatar_url'] as String? ?? '',
     );
   }
 
@@ -22,6 +30,21 @@ class AuthUser {
   final String email;
   final String displayName;
   final String nicename;
+  final String firstName;
+  final String lastName;
+  final String nickname;
+  final String avatarUrl;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'display_name': displayName,
+        'nicename': nicename,
+        'first_name': firstName,
+        'last_name': lastName,
+        'nickname': nickname,
+        'avatar_url': avatarUrl,
+      };
 }
 
 class AuthSession {
