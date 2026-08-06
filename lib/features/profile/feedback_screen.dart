@@ -49,9 +49,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     try {
       await ref.read(apiProvider).submitContact(
             name: user == null ? _nameController.text.trim() : null,
-            phone: _phoneController.text.trim().isEmpty
-                ? null
-                : _phoneController.text.trim(),
+            phone: _phoneController.text.trim(),
             email: user == null ? _emailController.text.trim() : null,
             message: _messageController.text.trim(),
             consent: _consent,
@@ -138,9 +136,15 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
-                      labelText: 'Телефон (необязательно)',
+                      labelText: 'Телефон',
                       hintText: '+7 700 000 00 00',
                     ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Укажите телефон';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 12),
                 ],

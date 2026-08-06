@@ -14,24 +14,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+const _socialBase =
+    'https://chrysotile.kz/wp-content/themes/chrysotile-theme/assets/social';
+
 const _socialLinks = [
   (
     asset: 'assets/social/telegram.svg',
+    network: '$_socialBase/telegram.svg',
     url: 'https://t.me/gazetakm',
     label: 'Telegram',
   ),
   (
     asset: 'assets/social/instagram.svg',
+    network: '$_socialBase/instagram.svg',
     url: 'https://www.instagram.com/gazetakm/',
     label: 'Instagram',
   ),
   (
     asset: 'assets/social/youtube.svg',
+    network: '$_socialBase/youtube.svg',
     url: 'https://www.youtube.com/channel/UCAkrsp_48W7tEdthJgzu9aA',
     label: 'YouTube',
   ),
   (
     asset: 'assets/social/ok.svg',
+    network: '$_socialBase/ok.svg',
     url: 'https://ok.ru/profile/572667802596',
     label: 'OK',
   ),
@@ -57,220 +64,265 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             const BrandHeader(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 48,
-                        backgroundColor: AppColors.blueSoft,
-                        backgroundImage: user?.avatarUrl.isNotEmpty == true
-                            ? CachedNetworkImageProvider(user!.avatarUrl)
-                            : null,
-                        child: user?.avatarUrl.isNotEmpty == true
-                            ? null
-                            : Icon(
-                                Icons.person,
-                                size: 48,
-                                color: Colors.white.withValues(alpha: 0.9),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 48,
+                                backgroundColor: AppColors.blueSoft,
+                                backgroundImage:
+                                    user?.avatarUrl.isNotEmpty == true
+                                        ? CachedNetworkImageProvider(
+                                            user!.avatarUrl,
+                                          )
+                                        : null,
+                                child: user?.avatarUrl.isNotEmpty == true
+                                    ? null
+                                    : Icon(
+                                        Icons.person,
+                                        size: 48,
+                                        color:
+                                            Colors.white.withValues(alpha: 0.9),
+                                      ),
                               ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user?.displayName.isNotEmpty == true
-                                  ? user!.displayName
-                                  : 'Гость',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: isDarkTheme
-                                    ? AppColors.darkText
-                                    : Colors.black,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      user?.displayName.isNotEmpty == true
+                                          ? user!.displayName
+                                          : 'Гость',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w500,
+                                        color: isDarkTheme
+                                            ? AppColors.darkText
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      user == null
+                                          ? 'Войдите, чтобы комментировать'
+                                          : user.email,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: isDarkTheme
+                                            ? AppColors.darkTextSoft
+                                            : Colors.black
+                                                .withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                    if (user == null) ...[
+                                      const SizedBox(height: 10),
+                                      FilledButton(
+                                        onPressed: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) =>
+                                                  const LoginScreen(),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Войти'),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              user == null
-                                  ? 'Войдите, чтобы комментировать'
-                                  : user.email,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: isDarkTheme
-                                    ? AppColors.darkTextSoft
-                                    : Colors.black.withValues(alpha: 0.6),
-                              ),
-                            ),
-                            if (user == null) ...[
-                              const SizedBox(height: 10),
-                              FilledButton(
-                                onPressed: () {
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          _MenuCard(
+                            items: [
+                              _MenuItem(
+                                label: 'Уведомления',
+                                onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
-                                      builder: (_) => const LoginScreen(),
+                                      builder: (_) =>
+                                          const NotificationsScreen(),
                                     ),
                                   );
                                 },
-                                child: const Text('Войти'),
+                              ),
+                              _MenuItem(
+                                label: 'Обратная связь',
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const FeedbackScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (user != null)
+                                _MenuItem(
+                                  label: 'Редактировать профиль',
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) =>
+                                            const EditProfileScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Тема',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: isDarkTheme
+                                        ? AppColors.darkText
+                                        : Colors.black,
+                                  ),
+                                ),
+                              ),
+                              ThemeToggle(
+                                isDark: effectiveIsDark,
+                                onChanged: (dark) {
+                                  ref.read(themeModeProvider.notifier).state =
+                                      dark
+                                          ? ThemeMode.dark
+                                          : ThemeMode.light;
+                                },
                               ),
                             ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  _MenuCard(
-                    items: [
-                      _MenuItem(
-                        label: 'Уведомления',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const NotificationsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      _MenuItem(
-                        label: 'Обратная связь',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const FeedbackScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      if (user != null)
-                        _MenuItem(
-                          label: 'Редактировать профиль',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const EditProfileScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Тема',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: isDarkTheme
-                                ? AppColors.darkText
-                                : Colors.black,
                           ),
-                        ),
+                          const SizedBox(height: 24),
+                          const _SocialRow(links: _socialLinks),
+                        ],
                       ),
-                      ThemeToggle(
-                        isDark: effectiveIsDark,
-                        onChanged: (dark) {
-                          ref.read(themeModeProvider.notifier).state =
-                              dark ? ThemeMode.dark : ThemeMode.light;
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: _socialLinks.map((link) {
-                      return IconButton(
-                        tooltip: link.label,
-                        onPressed: () => launchUrl(
-                          Uri.parse(link.url),
-                          mode: LaunchMode.externalApplication,
-                        ),
-                        icon: SvgPicture.asset(
-                          link.asset,
-                          width: 28,
-                          height: 28,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  if (user != null) ...[
-                    const SizedBox(height: 24),
-                    InkWell(
-                      onTap: () =>
-                          ref.read(authControllerProvider.notifier).logout(),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.logout,
-                              size: 24,
-                              color: isDarkTheme
-                                  ? AppColors.darkText
-                                  : Colors.black,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Выйти',
-                              style: TextStyle(
-                                fontSize: 16,
+                    ),
+                    if (user != null) ...[
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => ref
+                            .read(authControllerProvider.notifier)
+                            .logout(),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.logout,
+                                size: 24,
                                 color: isDarkTheme
                                     ? AppColors.darkText
                                     : Colors.black,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                'Выйти',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: isDarkTheme
+                                      ? AppColors.darkText
+                                      : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => launchUrl(
+                          Uri.parse(
+                            'https://chrysotile.kz/rulse_use_material/',
+                          ),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        child: Text(
+                          'Правила использования материалов',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isDarkTheme
+                                ? AppColors.blueSoft
+                                : AppColors.blue,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          AppConfig.siteName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkTheme
+                                ? AppColors.darkTextSoft
+                                : AppColors.gray,
+                          ),
                         ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 28),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => launchUrl(
-                        Uri.parse(
-                          'https://chrysotile.kz/rulse_use_material/',
-                        ),
-                        mode: LaunchMode.externalApplication,
-                      ),
-                      child: Text(
-                        'Правила использования материалов',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDarkTheme
-                              ? AppColors.blueSoft
-                              : AppColors.blue,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      AppConfig.siteName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkTheme
-                            ? AppColors.darkTextSoft
-                            : AppColors.gray,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SocialRow extends StatelessWidget {
+  const _SocialRow({required this.links});
+
+  final List<({String asset, String network, String url, String label})> links;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: links.map((link) {
+        return Tooltip(
+          message: link.label,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => launchUrl(
+              Uri.parse(link.url),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: SvgPicture.network(
+                link.network,
+                width: 32,
+                height: 32,
+                placeholderBuilder: (_) => SvgPicture.asset(
+                  link.asset,
+                  width: 32,
+                  height: 32,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

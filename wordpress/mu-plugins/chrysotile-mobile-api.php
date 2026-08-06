@@ -440,6 +440,11 @@ final class Chrysotile_Mobile_API {
 			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
 		}
 
+		$user = get_userdata( $user_id );
+		if ( ! $user instanceof WP_User ) {
+			return new WP_REST_Response( array( 'message' => 'Unauthorized' ), 401 );
+		}
+
 		$first_name = sanitize_text_field( (string) $request->get_param( 'first_name' ) );
 		$last_name  = sanitize_text_field( (string) $request->get_param( 'last_name' ) );
 
@@ -447,36 +452,96 @@ final class Chrysotile_Mobile_API {
 			return new WP_REST_Response( array( 'message' => 'Укажите имя или фамилию.' ), 400 );
 		}
 
+		// Cyrillic display names are valid for display_name / nickname.
+		// Never derive user_nicename from them: sanitize_title() percent-encodes
+		// UTF-8 (e.g. "Азат Ержанов" → ~69 chars) and WP rejects > 50.
 		$display_name = trim( $first_name . ' ' . $last_name );
-		$nickname     = sanitize_user( $display_name, true );
-		if ( '' === $nickname ) {
+		if ( '' === $display_name ) {
+			$display_name = '' !== (string) $user->display_name
+				? (string) $user->display_name
+				: (string) $user->user_login;
+		}
+
+		$nickname = $display_name;
+		if ( '' === trim( $nickname ) ) {
+			$existing_nickname = trim( (string) $user->nickname );
+			$nickname          = '' !== $existing_nickname
+				? $existing_nickname
+				: (string) $user->user_login;
+		}
+		if ( '' === trim( $nickname ) ) {
 			$nickname = 'user' . $user_id;
 		}
 
-		$nicename_base = sanitize_title( $display_name );
-		if ( '' === $nicename_base ) {
-			$nicename_base = 'user-' . $user_id;
+		// Keep a safe ASCII nicename ≤ 50; prefer existing slug, never Cyrillic encode.
+		$existing_nicename = sanitize_title( (string) $user->user_nicename );
+		if ( '' !== $existing_nicename && strlen( $existing_nicename ) <= 50 ) {
+			$nicename = $existing_nicename;
+		} else {
+			$login_slug = sanitize_title( (string) $user->user_login );
+			if ( '' !== $login_slug && strlen( $login_slug ) <= 50 ) {
+				$nicename = $login_slug;
+			} else {
+				$nicename = 'user-' . $user_id;
+			}
 		}
-		$nicename = $nicename_base;
+		$nicename = substr( $nicename, 0, 50 );
 		$i        = 1;
+		$base     = $nicename;
 		while ( self::nicename_exists( $nicename, $user_id ) ) {
-			$nicename = $nicename_base . '-' . $i;
+			$suffix   = '-' . $i;
+			$nicename = substr( $base, 0, 50 - strlen( $suffix ) ) . $suffix;
 			++$i;
+			if ( $i > 1000 ) {
+				$nicename = substr( 'user-' . $user_id . '-' . wp_generate_password( 6, false ), 0, 50 );
+				break;
+			}
 		}
 
-		$result = wp_update_user(
-			array(
-				'ID'            => $user_id,
-				'first_name'    => $first_name,
-				'last_name'     => $last_name,
-				'nickname'      => $nickname,
-				'display_name'  => $display_name,
-				'user_nicename' => $nicename,
-			)
+		$userdata = array(
+			'ID'            => $user_id,
+			'first_name'    => $first_name,
+			'last_name'     => $last_name,
+			'nickname'      => $nickname,
+			'display_name'  => $display_name,
+			'user_nicename' => $nicename,
 		);
 
+		// wp_insert_user always re-runs sanitize_user( login, true ). Existing
+		// Cyrillic/non-ASCII logins become '' and WP returns empty_user_login.
+		// Also re-runs sanitize_title on nicename — guard keeps our ≤50 ASCII slug.
+		$preserved_login    = (string) $user->user_login;
+		$preserved_nicename = $nicename;
+		$login_guard        = static function ( $login ) use ( $preserved_login ) {
+			$login = is_string( $login ) ? trim( $login ) : '';
+			return '' !== $login ? $login : $preserved_login;
+		};
+		$nicename_guard = static function ( $slug ) use ( $preserved_nicename ) {
+			$slug = is_string( $slug ) ? trim( $slug ) : '';
+			if ( '' === $slug ) {
+				return $preserved_nicename;
+			}
+			// sanitize_title may re-encode Unicode past 50 chars after this filter.
+			if ( strlen( $slug ) > 50 || preg_match( '/%[0-9a-f]{2}/i', $slug ) ) {
+				return $preserved_nicename;
+			}
+			return $slug;
+		};
+
+		add_filter( 'pre_user_login', $login_guard, 999 );
+		add_filter( 'pre_user_nicename', $nicename_guard, 999 );
+		$result = wp_update_user( $userdata );
+		remove_filter( 'pre_user_login', $login_guard, 999 );
+		remove_filter( 'pre_user_nicename', $nicename_guard, 999 );
+
 		if ( is_wp_error( $result ) ) {
-			return new WP_REST_Response( array( 'message' => $result->get_error_message() ), 400 );
+			return new WP_REST_Response(
+				array(
+					'message' => $result->get_error_message(),
+					'code'    => $result->get_error_code(),
+				),
+				400
+			);
 		}
 
 		$files = $request->get_file_params();
@@ -518,7 +583,7 @@ final class Chrysotile_Mobile_API {
 		if ( '' === $message ) {
 			return new WP_REST_Response( array( 'message' => 'Напишите сообщение.' ), 400 );
 		}
-		if ( ! $user && '' === $phone ) {
+		if ( '' === $phone ) {
 			return new WP_REST_Response( array( 'message' => 'Укажите телефон.' ), 400 );
 		}
 		if ( ! $consent ) {

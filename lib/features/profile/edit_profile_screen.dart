@@ -38,21 +38,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
-  String get _previewDisplayName {
-    final value =
-        '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'
-            .trim();
-    return value.isEmpty ? '—' : value;
-  }
-
-  String get _previewNickname {
-    final value = _previewDisplayName
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-zа-яё0-9]+', caseSensitive: false), '.')
-        .replaceAll(RegExp(r'^\.|\.$'), '');
-    return value.isEmpty ? '—' : value;
-  }
-
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(
@@ -101,7 +86,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).valueOrNull;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final ImageProvider<Object>? avatarImage = _avatarPath != null
         ? FileImage(File(_avatarPath!))
         : (user?.avatarUrl.isNotEmpty == true
@@ -148,7 +132,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 TextFormField(
                   controller: _firstNameController,
                   decoration: const InputDecoration(labelText: 'Имя'),
-                  onChanged: (_) => setState(() {}),
                   validator: (value) {
                     if ((value == null || value.trim().isEmpty) &&
                         _lastNameController.text.trim().isEmpty) {
@@ -161,19 +144,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 TextFormField(
                   controller: _lastNameController,
                   decoration: const InputDecoration(labelText: 'Фамилия'),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 20),
-                _ReadonlyField(
-                  label: 'Отображать как',
-                  value: _previewDisplayName,
-                  isDark: isDark,
-                ),
-                const SizedBox(height: 12),
-                _ReadonlyField(
-                  label: 'Ник',
-                  value: _previewNickname,
-                  isDark: isDark,
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
@@ -213,30 +183,5 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return error.message ?? 'Ошибка сети';
     }
     return error.toString();
-  }
-}
-
-class _ReadonlyField extends StatelessWidget {
-  const _ReadonlyField({
-    required this.label,
-    required this.value,
-    required this.isDark,
-  });
-
-  final String label;
-  final String value;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: InputDecoration(labelText: label),
-      child: Text(
-        value,
-        style: TextStyle(
-          color: isDark ? AppColors.darkTextSoft : AppColors.gray,
-        ),
-      ),
-    );
   }
 }
