@@ -9,6 +9,7 @@ import 'package:chrysotile_app/features/auth/login_screen.dart';
 import 'package:chrysotile_app/features/profile/edit_profile_screen.dart';
 import 'package:chrysotile_app/features/profile/feedback_screen.dart';
 import 'package:chrysotile_app/features/profile/notifications_screen.dart';
+import 'package:chrysotile_app/features/legal/legal_document_screen.dart';
 import 'package:chrysotile_app/shared/widgets/theme_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -152,6 +153,32 @@ class ProfileScreen extends ConsumerWidget {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                 builder: (_) => const FeedbackScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _MenuItem(
+                          label: 'Политика конфиденциальности',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const LegalDocumentScreen(
+                                  title: 'Политика конфиденциальности',
+                                  assetPath: AppConfig.privacyPolicyAsset,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        _MenuItem(
+                          label: 'Условия использования',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const LegalDocumentScreen(
+                                  title: 'Условия использования',
+                                  assetPath: AppConfig.termsAsset,
+                                ),
                               ),
                             );
                           },
