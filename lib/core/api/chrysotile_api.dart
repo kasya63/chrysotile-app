@@ -235,6 +235,21 @@ class ChrysotileApi {
     return ArticleComment.fromJson(response.data ?? {});
   }
 
+  Future<ArticleComment> updateComment({
+    required int commentId,
+    required String content,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/comments/$commentId',
+      data: {'content': content},
+    );
+    return ArticleComment.fromJson(response.data ?? {});
+  }
+
+  Future<void> deleteComment(int commentId) async {
+    await _dio.delete<void>('/comments/$commentId');
+  }
+
   Future<void> registerDevice({
     required String fcmToken,
     required String platform,

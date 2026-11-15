@@ -85,6 +85,22 @@ class BookmarksData {
   }
 }
 
+const readLaterFolderId = 'read_later';
+const readLaterFolderName = 'Читать позже';
+
+/// Makes sure the built-in "Читать позже" folder always exists (first in list).
+BookmarksData withDefaultFolders(BookmarksData data) {
+  if (data.folders.any((folder) => folder.id == readLaterFolderId)) {
+    return data;
+  }
+  return data.copyWith(
+    folders: [
+      const BookmarkFolder(id: readLaterFolderId, name: readLaterFolderName),
+      ...data.folders,
+    ],
+  );
+}
+
 class BookmarksStore {
   static const _legacyKey = 'chrysotile_bookmarks_v1';
   static const _key = 'chrysotile_bookmarks_v2';
@@ -100,12 +116,12 @@ class BookmarksStore {
       final items = (decoded['items'] as List<dynamic>? ?? [])
           .map((item) => BookmarkItem.fromJson(item as Map<String, dynamic>))
           .toList();
-      return BookmarksData(folders: folders, items: items);
+      return withDefaultFolders(BookmarksData(folders: folders, items: items));
     }
 
     final legacy = prefs.getString(_legacyKey);
     if (legacy == null || legacy.isEmpty) {
-      return const BookmarksData();
+      return withDefaultFolders(const BookmarksData());
     }
 
     final decoded = jsonDecode(legacy) as List<dynamic>;
@@ -118,7 +134,7 @@ class BookmarksStore {
           ),
         )
         .toList();
-    final data = BookmarksData(items: items);
+    final data = withDefaultFolders(BookmarksData(items: items));
     await save(data);
     await prefs.remove(_legacyKey);
     return data;

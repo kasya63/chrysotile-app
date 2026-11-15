@@ -34,13 +34,13 @@ class AppSearchField extends StatelessWidget {
       autofocus: autofocus,
       textInputAction: TextInputAction.search,
       style: TextStyle(
-        fontSize: 14,
+        fontSize: 16,
         color: isDark ? AppColors.darkText : Colors.black,
       ),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
-          fontSize: 14,
+          fontSize: 16,
           color: isDark
               ? AppColors.darkTextSoft
               : Colors.black.withValues(alpha: 0.65),

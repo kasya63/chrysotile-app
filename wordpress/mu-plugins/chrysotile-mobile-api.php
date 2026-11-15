@@ -198,6 +198,27 @@ final class Chrysotile_Mobile_API {
 
 		register_rest_route(
 			self::NS,
+			'/comments/(?P<id>\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::EDITABLE,
+					'callback'            => array( self::class, 'update_comment' ),
+					'permission_callback' => static function () {
+						return is_user_logged_in();
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( self::class, 'delete_comment' ),
+					'permission_callback' => static function () {
+						return is_user_logged_in();
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
 			'/posts/(?P<id>\d+)/comments',
 			array(
 				array(
@@ -776,6 +797,67 @@ final class Chrysotile_Mobile_API {
 		}
 
 		return new WP_REST_Response( self::format_comment( $comment ), 201 );
+	}
+
+	/**
+	 * Returns the comment if it belongs to the current user, otherwise an error response.
+	 *
+	 * @return WP_Comment|WP_REST_Response
+	 */
+	private static function get_own_comment( int $comment_id ) {
+		$comment = get_comment( $comment_id );
+		if ( ! $comment instanceof WP_Comment ) {
+			return new WP_REST_Response( array( 'message' => 'Comment not found.' ), 404 );
+		}
+
+		$current_user = get_current_user_id();
+		if ( $current_user <= 0 || (int) $comment->user_id !== $current_user ) {
+			return new WP_REST_Response( array( 'message' => 'Forbidden' ), 403 );
+		}
+
+		return $comment;
+	}
+
+	public static function update_comment( WP_REST_Request $request ) {
+		$comment = self::get_own_comment( (int) $request->get_param( 'id' ) );
+		if ( $comment instanceof WP_REST_Response ) {
+			return $comment;
+		}
+
+		$content = trim( wp_strip_all_tags( (string) $request->get_param( 'content' ) ) );
+		if ( '' === $content ) {
+			return new WP_REST_Response( array( 'message' => 'Комментарий не может быть пустым.' ), 400 );
+		}
+		if ( strlen( $content ) > 2000 ) {
+			return new WP_REST_Response( array( 'message' => 'Слишком длинный комментарий.' ), 400 );
+		}
+
+		// An edited comment goes through moderation again.
+		wp_update_comment(
+			array(
+				'comment_ID'       => (int) $comment->comment_ID,
+				'comment_content'  => $content,
+				'comment_approved' => 0,
+			)
+		);
+
+		$updated = get_comment( (int) $comment->comment_ID );
+		if ( ! $updated instanceof WP_Comment ) {
+			return new WP_REST_Response( array( 'message' => 'Не удалось сохранить комментарий.' ), 500 );
+		}
+
+		return new WP_REST_Response( self::format_comment( $updated ), 200 );
+	}
+
+	public static function delete_comment( WP_REST_Request $request ) {
+		$comment = self::get_own_comment( (int) $request->get_param( 'id' ) );
+		if ( $comment instanceof WP_REST_Response ) {
+			return $comment;
+		}
+
+		wp_delete_comment( (int) $comment->comment_ID, true );
+
+		return new WP_REST_Response( array( 'deleted' => true ), 200 );
 	}
 
 	private static function format_user( int $user_id ): array {

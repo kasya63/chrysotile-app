@@ -88,7 +88,7 @@ class CategoriesScreen extends ConsumerWidget {
                                 Text(
                                   '${category.count} материалов',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 15,
                                     color: isDark
                                         ? AppColors.darkTextSoft
                                         : AppColors.gray,

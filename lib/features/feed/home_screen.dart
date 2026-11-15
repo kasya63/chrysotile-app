@@ -1,3 +1,4 @@
+import 'package:chrysotile_app/core/models/post_models.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/features/bookmarks/bookmark_save.dart';
 import 'package:chrysotile_app/features/feed/article_screen.dart';
@@ -57,6 +58,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         builder: (_) => const SearchScreen(),
       ),
     );
+  }
+
+  List<_FeedBlock> _buildBlocks(List<PostCard> items, FeedSection? strip) {
+    final blocks = <_FeedBlock>[];
+    var i = 0;
+    var step = 0;
+    while (i < items.length) {
+      switch (step % 4) {
+        case 0:
+          blocks.add(_FeedBlock(_BlockKind.big, items.skip(i).take(1).toList()));
+          i += 1;
+        case 2:
+          blocks.add(_FeedBlock(_BlockKind.pair, items.skip(i).take(2).toList()));
+          i += 2;
+        default:
+          for (var k = 0; k < 2 && i < items.length; k++) {
+            blocks.add(
+              _FeedBlock(_BlockKind.list, items.skip(i).take(1).toList()),
+            );
+            i += 1;
+          }
+      }
+      step += 1;
+      if (step == 3 && strip != null) {
+        blocks.add(
+          _FeedBlock(_BlockKind.carousel, strip.posts, title: strip.label),
+        );
+      }
+    }
+    return blocks;
+  }
+
+  void _bookmark(PostCard post) {
+    handleBookmarkTap(context: context, ref: ref, post: post);
+  }
+
+  Widget _buildBlock(BuildContext context, _FeedBlock block) {
+    switch (block.kind) {
+      case _BlockKind.big:
+        final bigPost = block.posts.first;
+        return BigNewsCard(
+          post: bigPost,
+          bookmarked: ref.watch(isBookmarkedProvider(bigPost.id)),
+          onTap: () => openArticle(context, bigPost.id),
+          onBookmarkTap: () => _bookmark(bigPost),
+        );
+      case _BlockKind.pair:
+        return NewsPairRow(
+          posts: block.posts,
+          onTap: (post) => openArticle(context, post.id),
+        );
+      case _BlockKind.carousel:
+        return NewsCarousel(
+          title: block.title.isNotEmpty ? block.title : 'Выбор редакции',
+          posts: block.posts,
+          onTap: (post) => openArticle(context, post.id),
+        );
+      case _BlockKind.list:
+        final listPost = block.posts.first;
+        return NewsListCard(
+          post: listPost,
+          bookmarked: ref.watch(isBookmarkedProvider(listPost.id)),
+          onTap: () => openArticle(context, listPost.id),
+          onBookmarkTap: () => _bookmark(listPost),
+        );
+    }
   }
 
   @override
@@ -119,63 +186,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
                 data: (home) {
                   final showHero = selectedSlug == null;
-                  final hero = home.hero.isNotEmpty ? home.hero.first : null;
+                  final feedItems = latest.items;
+
+                  // Lead story: "Главное" for the full feed, first story of the
+                  // chosen rubric otherwise.
+                  PostCard? hero;
+                  var rest = <PostCard>[];
+                  if (showHero && home.hero.isNotEmpty) {
+                    final lead = home.hero.first;
+                    hero = lead;
+                    rest = feedItems.where((p) => p.id != lead.id).toList();
+                  } else if (feedItems.isNotEmpty) {
+                    hero = feedItems.first;
+                    rest = feedItems.skip(1).toList();
+                  }
+
+                  FeedSection? strip;
+                  if (showHero) {
+                    for (final section in home.sections) {
+                      if (section.posts.length >= 3) {
+                        strip = section;
+                        break;
+                      }
+                    }
+                  }
+                  final blocks = _buildBlocks(rest, strip);
+
+                  final heroPost = hero;
+
                   return [
-                    if (showHero) ...[
+                    if (heroPost != null) ...[
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 2,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: AppColors.blue,
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                              ),
-                              const SizedBox(width: 7),
-                              Text(
-                                'Главное сегодня',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? AppColors.darkText
-                                      : Colors.black,
-                                ),
-                              ),
-                            ],
+                          child: _SectionTitle(
+                            showHero ? 'Главное сегодня' : 'Главное',
                           ),
                         ),
                       ),
-                      if (hero != null) ...[
-                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: HeroTodayCard(
-                              post: hero,
-                              onTap: () => openArticle(context, hero.id),
-                            ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: HeroTodayCard(
+                            post: heroPost,
+                            onTap: () => openArticle(context, heroPost.id),
                           ),
                         ),
-                      ],
-                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
                     ],
-                    SliverToBoxAdapter(
+                    const SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Последние новости',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                isDark ? AppColors.darkText : Colors.black,
-                          ),
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: _SectionTitle('Последние новости'),
                       ),
                     ),
                     const SpacedSliverBox(height: 12),
@@ -197,6 +261,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Text(
                             'Пока нет материалов',
                             style: TextStyle(
+                              fontSize: 17,
                               color: isDark
                                   ? AppColors.darkTextSoft
                                   : AppColors.gray,
@@ -210,7 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
-                              if (index >= latest.items.length) {
+                              if (index >= blocks.length) {
                                 return const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 16),
                                   child: Center(
@@ -218,24 +283,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 );
                               }
-                              final post = latest.items[index];
-                              final bookmarked =
-                                  ref.watch(isBookmarkedProvider(post.id));
-                              return NewsListCard(
-                                post: post,
-                                bookmarked: bookmarked,
-                                onTap: () => openArticle(context, post.id),
-                                onBookmarkTap: () {
-                                  handleBookmarkTap(
-                                    context: context,
-                                    ref: ref,
-                                    post: post,
-                                  );
-                                },
-                              );
+                              return _buildBlock(context, blocks[index]);
                             },
-                            childCount: latest.items.length +
-                                (latest.loadingMore ? 1 : 0),
+                            childCount:
+                                blocks.length + (latest.loadingMore ? 1 : 0),
                           ),
                         ),
                       ),
@@ -272,5 +323,49 @@ class SpacedSliverBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(child: SizedBox(height: height));
+  }
+}
+
+enum _BlockKind { big, list, pair, carousel }
+
+class _FeedBlock {
+  const _FeedBlock(this.kind, this.posts, {this.title = ''});
+
+  final _BlockKind kind;
+  final List<PostCard> posts;
+  final String title;
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 22,
+          decoration: BoxDecoration(
+            color: AppColors.blue,
+            borderRadius: BorderRadius.circular(5),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
+              color: isDark ? AppColors.darkText : Colors.black,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -32,7 +32,7 @@ class NotificationsScreen extends ConsumerWidget {
           Text(
             'Выберите рубрики, по которым хотите получать push-уведомления.',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 16,
               color: isDark ? AppColors.darkTextSoft : AppColors.gray,
             ),
           ),

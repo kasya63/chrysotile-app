@@ -336,7 +336,7 @@ class ProfileScreen extends ConsumerWidget {
                   child: Text(
                     AppConfig.siteName,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       color: isDarkTheme
                           ? AppColors.darkTextSoft
                           : AppColors.gray,

@@ -209,7 +209,7 @@ class BookmarksNotifier extends StateNotifier<AsyncValue<BookmarksData>> {
 
   Future<void> renameFolder(String id, String name) async {
     final trimmed = name.trim();
-    if (trimmed.isEmpty) {
+    if (trimmed.isEmpty || id == readLaterFolderId) {
       return;
     }
     final current = state.value ?? const BookmarksData();
@@ -220,6 +220,9 @@ class BookmarksNotifier extends StateNotifier<AsyncValue<BookmarksData>> {
   }
 
   Future<void> deleteFolder(String id) async {
+    if (id == readLaterFolderId) {
+      return;
+    }
     final current = state.value ?? const BookmarksData();
     final folders =
         current.folders.where((folder) => folder.id != id).toList();

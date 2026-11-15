@@ -4,8 +4,8 @@ class TextScaleStore {
   static const _key = 'chrysotile_text_scale_v1';
 
   static const normal = 1.0;
-  static const larger = 1.15;
-  static const largest = 1.3;
+  static const larger = 1.2;
+  static const largest = 1.4;
 
   static const levels = [normal, larger, largest];
 
@@ -18,7 +18,14 @@ class TextScaleStore {
     if (levels.contains(value)) {
       return value;
     }
-    return normal;
+    // Older saved values (1.15 / 1.3) map to the nearest current level.
+    var nearest = normal;
+    for (final level in levels) {
+      if ((level - value).abs() < (nearest - value).abs()) {
+        nearest = level;
+      }
+    }
+    return nearest;
   }
 
   Future<void> save(double value) async {

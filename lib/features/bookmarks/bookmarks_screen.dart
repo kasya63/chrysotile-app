@@ -43,8 +43,11 @@ class BookmarksScreen extends ConsumerWidget {
                           ),
                         ),
                         Container(
-                          width: 70,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          constraints: const BoxConstraints(minWidth: 70),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 10,
+                          ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
@@ -67,7 +70,7 @@ class BookmarksScreen extends ConsumerWidget {
                               Text(
                                 'Заметок',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                   color: isDark
                                       ? AppColors.darkTextSoft
@@ -148,8 +151,12 @@ class BookmarksScreen extends ConsumerWidget {
                           title: folder.name,
                           count: count,
                           onTap: () => _openFolder(context, folder, data),
-                          onLongPress: () =>
-                              _showFolderActions(context, ref, folder),
+                          icon: folder.id == readLaterFolderId
+                              ? Icons.schedule
+                              : Icons.folder,
+                          onLongPress: folder.id == readLaterFolderId
+                              ? null
+                              : () => _showFolderActions(context, ref, folder),
                         );
                       }),
                   ],
@@ -444,12 +451,14 @@ class _FolderRow extends StatelessWidget {
     required this.count,
     required this.onTap,
     required this.onLongPress,
+    this.icon = Icons.folder,
   });
 
   final String title;
   final int count;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +474,7 @@ class _FolderRow extends StatelessWidget {
           onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            height: 57,
+            constraints: const BoxConstraints(minHeight: 57),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
@@ -479,7 +488,7 @@ class _FolderRow extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.folder,
+                  icon,
                   size: 32,
                   color: isDark ? AppColors.blueSoft : AppColors.blue,
                 ),
@@ -492,14 +501,14 @@ class _FolderRow extends StatelessWidget {
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
                           color: isDark ? AppColors.darkText : Colors.black,
                         ),
                       ),
                       Text(
                         '$count заметок',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 15,
                           fontWeight: FontWeight.w500,
                           color: isDark
                               ? AppColors.darkTextSoft

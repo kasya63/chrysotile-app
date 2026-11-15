@@ -1,8 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chrysotile_app/core/config/app_config.dart';
 import 'package:chrysotile_app/core/theme/app_theme.dart';
 import 'package:chrysotile_app/features/bookmarks/bookmark_save.dart';
 import 'package:chrysotile_app/features/feed/comments_section.dart';
 import 'package:chrysotile_app/features/feed/feed_providers.dart';
 import 'package:chrysotile_app/shared/widgets/error_state.dart';
+import 'package:chrysotile_app/shared/widgets/image_viewer.dart';
 import 'package:chrysotile_app/shared/widgets/post_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,9 +85,12 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 48),
             children: [
               if (article.image.hasUrl)
-                PostImageFrame(
-                  image: article.image,
-                  borderRadius: 15,
+                GestureDetector(
+                  onTap: () => openImageViewer(context, article.image.url),
+                  child: PostImageFrame(
+                    image: article.image,
+                    borderRadius: 15,
+                  ),
                 ),
               const SizedBox(height: 16),
               if (article.categories.isNotEmpty) ...[
@@ -102,8 +108,8 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                     child: Text(
                       article.categories.first.name,
                       style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: isDark ? AppColors.blueSoft : AppColors.blue,
                       ),
                     ),
@@ -114,6 +120,7 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
               Text(
                 article.title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontSize: 28,
                       fontWeight: FontWeight.w700,
                       height: 1.2,
                     ),
@@ -123,6 +130,7 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                 Text(
                   article.subtitle,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 19,
                         color: isDark
                             ? AppColors.darkTextSoft
                             : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -133,7 +141,8 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
               const SizedBox(height: 12),
               Text(
                 '${article.dateDisplay} · ~${article.readingMin} мин · ${article.views} просмотров',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontSize: 15,
                       color: isDark
                           ? AppColors.darkTextSoft
                           : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -144,14 +153,38 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                 HtmlWidget(
                   article.contentHtml!,
                   textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontSize: 19,
                         height: 1.6,
                       ),
+                  // Photos inside the text open in the zoomable viewer.
+                  customWidgetBuilder: (element) {
+                    if (element.localName != 'img') {
+                      return null;
+                    }
+                    var src = element.attributes['src'] ?? '';
+                    if (src.isEmpty) {
+                      src = element.attributes['data-src'] ?? '';
+                    }
+                    if (src.isEmpty) {
+                      return null;
+                    }
+                    if (src.startsWith('//')) {
+                      src = 'https:$src';
+                    } else if (src.startsWith('/')) {
+                      src = '${AppConfig.siteUrl}$src';
+                    }
+                    final url = src;
+                    return _ZoomableHtmlImage(url: url);
+                  },
                 ),
               const SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () => _share(article.title, article.permalink),
                 icon: const Icon(Icons.ios_share, size: 20),
-                label: const Text('Поделиться'),
+                label: const Text(
+                  'Поделиться',
+                  style: TextStyle(fontSize: 17),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.blue,
                   side: const BorderSide(color: AppColors.blue),
@@ -165,6 +198,7 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                 Text(
                   'Читайте также',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -193,6 +227,44 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _ZoomableHtmlImage extends StatelessWidget {
+  const _ZoomableHtmlImage({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width - 32;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: GestureDetector(
+            onTap: () => openImageViewer(context, url),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: width,
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.fitWidth,
+                  placeholder: (_, _) => const SizedBox(
+                    height: 180,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

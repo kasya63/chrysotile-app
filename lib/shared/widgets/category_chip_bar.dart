@@ -20,8 +20,10 @@ class CategoryChipBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final scale =
+        MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.9).toDouble();
     return SizedBox(
-      height: 28,
+      height: 22 + 20.0 * scale,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -66,14 +68,14 @@ class _CategoryChip extends StatelessWidget {
       color: selected
           ? AppColors.blue
           : (isDark ? AppColors.darkSurface : Colors.white),
-      borderRadius: BorderRadius.circular(4.4),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(4.4),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4.4),
+            borderRadius: BorderRadius.circular(8),
             border: selected
                 ? null
                 : Border.all(
@@ -87,8 +89,8 @@ class _CategoryChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w400,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
               color: selected
                   ? Colors.white
                   : (isDark ? AppColors.darkText : Colors.black),

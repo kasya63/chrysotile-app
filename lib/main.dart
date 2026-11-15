@@ -60,9 +60,12 @@ class _ChrysotileAppState extends ConsumerState<ChrysotileApp> {
       darkTheme: AppTheme.dark(),
       builder: (context, child) {
         final media = MediaQuery.of(context);
+        // Respect iOS "Larger Text" together with the in-app A/A/A choice.
+        final system = media.textScaler.scale(1.0);
+        final combined = (system * textScale).clamp(1.0, 1.9).toDouble();
         return MediaQuery(
           data: media.copyWith(
-            textScaler: TextScaler.linear(textScale),
+            textScaler: TextScaler.linear(combined),
           ),
           child: child ?? const SizedBox.shrink(),
         );

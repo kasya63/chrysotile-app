@@ -217,7 +217,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   Text(
                     'Популярные запросы',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: isDark ? AppColors.darkText : Colors.black,
                     ),
@@ -231,7 +231,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         label: Text(
                           query,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 15,
                             color: isDark ? AppColors.darkText : Colors.black,
                           ),
                         ),
@@ -259,7 +259,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         child: Text(
                           'Недавние',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.w500,
                             color: isDark ? AppColors.darkText : Colors.black,
                           ),
@@ -269,7 +269,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         onPressed: _recent.isEmpty ? null : _clearRecent,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.blue,
-                          textStyle: const TextStyle(fontSize: 10),
+                          textStyle: const TextStyle(fontSize: 13),
                           visualDensity: VisualDensity.compact,
                         ),
                         child: const Text('Очистить'),
@@ -282,7 +282,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     Text(
                       'История пуста',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 15,
                         color: isDark
                             ? AppColors.darkTextSoft
                             : AppColors.gray,
@@ -303,7 +303,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         title: Text(
                           item,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 15,
                             color: isDark ? AppColors.darkText : Colors.black,
                           ),
                         ),
@@ -314,7 +314,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   Text(
                     'Результаты',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: isDark ? AppColors.darkText : Colors.black,
                     ),

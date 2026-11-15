@@ -42,7 +42,11 @@ Future<void> handleBookmarkTap({
             if (folders.isNotEmpty) const Divider(height: 1),
             ...folders.map(
               (folder) => ListTile(
-                leading: const Icon(Icons.folder_outlined),
+                leading: Icon(
+                  folder.id == readLaterFolderId
+                      ? Icons.schedule
+                      : Icons.folder_outlined,
+                ),
                 title: Text(folder.name),
                 onTap: () => Navigator.pop(context, folder.id),
               ),
