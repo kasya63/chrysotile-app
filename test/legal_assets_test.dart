@@ -11,7 +11,6 @@ void main() {
     ]) {
       final text = await rootBundle.loadString(path);
       expect(text.isNotEmpty, true, reason: path);
-      print('OK $path len=${text.length}');
     }
   });
 }
