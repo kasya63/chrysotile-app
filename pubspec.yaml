@@ -1,7 +1,7 @@
 name: chrysotile_app
 description: "Chrysotile mobile news reader for iOS and Android."
 publish_to: 'none'
-version: 1.0.2+2
+version: 1.0.3+3
 
 environment:
   sdk: ^3.12.2
@@ -29,6 +29,8 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4

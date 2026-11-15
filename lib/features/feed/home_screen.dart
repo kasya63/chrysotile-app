@@ -60,11 +60,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// After this many stories the feed drops the mixed layout (big cards,
+  /// pairs) and continues as a plain list of [NewsListCard]s.
+  static const _mixedLayoutLimit = 78;
+
   List<_FeedBlock> _buildBlocks(List<PostCard> items, FeedSection? strip) {
     final blocks = <_FeedBlock>[];
     var i = 0;
     var step = 0;
     while (i < items.length) {
+      if (i >= _mixedLayoutLimit) {
+        blocks.add(_FeedBlock(_BlockKind.list, [items[i]]));
+        i += 1;
+        continue;
+      }
       switch (step % 4) {
         case 0:
           blocks.add(_FeedBlock(_BlockKind.big, items.skip(i).take(1).toList()));
@@ -213,6 +222,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final blocks = _buildBlocks(rest, strip);
 
                   final heroPost = hero;
+
+                  // Rubric switch: the lead story comes from the new page, so
+                  // until it arrives show only a spinner. Otherwise the
+                  // "Последние новости" title flashes first and "Главное"
+                  // pops in above it once the page loads.
+                  if (heroPost == null && latest.loading) {
+                    return [
+                      const PrefixedSliverFill(
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ];
+                  }
 
                   return [
                     if (heroPost != null) ...[
